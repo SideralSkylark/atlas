@@ -43,10 +43,10 @@ devices in your workflow don't need Atlas. They just need Git.
 - [x] PAT credential management
 
 ### Phase 2 — File Rendering
-- [ ] Render HTML files in WebView
-- [ ] Render Markdown
-- [ ] Syntax-highlighted code viewer (syntect)
-- [ ] Search across filenames
+- [x] Render HTML files in WebView
+- [x] Render Markdown
+- [x] Syntax-highlighted code viewer (syntect)
+- [x] Search across filenames
 
 ### Phase 3 — Auth
 - [ ] SSH key generation

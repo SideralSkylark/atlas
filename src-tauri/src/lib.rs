@@ -331,6 +331,128 @@ fn git_push<R: Runtime>(app: AppHandle<R>, repo_id: String) -> Result<CloneResul
     })
 }
 
+use pulldown_cmark::{html, Parser};
+use syntect::highlighting::ThemeSet;
+use syntect::html::highlighted_html_for_string;
+use syntect::parsing::SyntaxSet;
+
+#[derive(Serialize, Deserialize)]
+pub struct RenderedFile {
+    pub content: String,
+    pub file_type: String, // "markdown", "code", "html", "plain"
+}
+
+#[command]
+fn render_file<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    relative_path: String,
+) -> Result<RenderedFile, String> {
+    let path = repo_path(&app, &repo_id).join(&relative_path);
+
+    if !path.exists() {
+        return Err("File not found".to_string());
+    }
+
+    if path.is_dir() {
+        return Err("Cannot render a directory".to_string());
+    }
+
+    let extension = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+
+    if extension == "md" || extension == "markdown" {
+        let parser = Parser::new(&content);
+        let mut html_output = String::new();
+        html::push_html(&mut html_output, parser);
+        Ok(RenderedFile {
+            content: html_output,
+            file_type: "markdown".to_string(),
+        })
+    } else if extension == "html" || extension == "htm" {
+        Ok(RenderedFile {
+            content,
+            file_type: "html".to_string(),
+        })
+    } else {
+        let ps = SyntaxSet::load_defaults_newlines();
+        let ts = ThemeSet::load_defaults();
+        
+        // Try to find syntax by extension
+        let syntax = ps.find_syntax_by_extension(&extension)
+            .unwrap_or_else(|| ps.find_syntax_plain_text());
+
+        let theme = &ts.themes["base16-ocean.dark"];
+        
+        match highlighted_html_for_string(&content, &ps, syntax, theme) {
+            Ok(html) => Ok(RenderedFile {
+                content: html,
+                file_type: "code".to_string(),
+            }),
+            Err(_) => Ok(RenderedFile {
+                content,
+                file_type: "plain".to_string(),
+            }),
+        }
+    }
+}
+
+use walkdir::WalkDir;
+
+#[derive(Serialize, Deserialize)]
+pub struct SearchResult {
+    pub name: String,
+    pub relative_path: String,
+    pub is_dir: bool,
+}
+
+#[command]
+fn search_files<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    query: String,
+) -> Vec<SearchResult> {
+    let root = repo_path(&app, &repo_id);
+    let mut results = Vec::new();
+    let query_lower = query.to_lowercase();
+
+    for entry in WalkDir::new(&root)
+        .into_iter()
+        .filter_entry(|e| !e.file_name().to_str().map(|s| s == ".git").unwrap_or(false))
+        .flatten()
+    {
+        let name = entry.file_name().to_string_lossy();
+        if name.to_lowercase().contains(&query_lower) {
+            let path = entry.path();
+            let rel_path = path
+                .strip_prefix(&root)
+                .unwrap_or(path)
+                .to_string_lossy()
+                .to_string();
+            
+            if rel_path.is_empty() {
+                continue;
+            }
+
+            results.push(SearchResult {
+                name: name.to_string(),
+                relative_path: rel_path,
+                is_dir: path.is_dir(),
+            });
+        }
+        
+        if results.len() > 100 {
+            break;
+        }
+    }
+
+    results
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -348,6 +470,8 @@ pub fn run() {
             list_repos,
             list_files,
             read_file,
+            render_file,
+            search_files,
             save_pat,
             get_pats,
             delete_pat,
