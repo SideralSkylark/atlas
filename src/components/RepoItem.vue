@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Folder, Trash2, Loader2, GitBranch } from "@lucide/vue";
 import type { RepoInfo } from "../composables/useRepos";
 
 defineProps<{
@@ -14,57 +15,36 @@ defineEmits<{
 
 <template>
   <div
-    class="flex justify-between items-center px-4 py-3 mb-3 bg-bg1 border border-border rounded-md transition-colors"
-    :class="!deleting ? 'cursor-pointer active:border-green' : 'opacity-50'"
+    class="group flex justify-between items-center px-4 py-4 mb-3 bg-bg1 border border-border rounded-lg transition-all active:scale-[0.98]"
+    :class="!deleting ? 'cursor-pointer hover:border-fg-dim active:border-green' : 'opacity-50'"
     @click="!deleting && $emit('open', repo)"
   >
-    <div>
-      <div class="font-bold text-fg">{{ repo.name }}</div>
-      <div class="text-xs text-aqua mt-0.5">{{ repo.branch }}</div>
+    <div class="flex items-center gap-4 overflow-hidden">
+      <div class="p-2 bg-bg3 rounded-md text-yellow">
+        <Folder :size="20" />
+      </div>
+      <div class="overflow-hidden">
+        <div class="font-bold text-fg truncate">{{ repo.name }}</div>
+        <div class="flex items-center gap-1.5 text-xs text-aqua mt-0.5">
+          <GitBranch :size="12" />
+          <span>{{ repo.branch }}</span>
+        </div>
+      </div>
     </div>
 
     <button
       @click.stop="$emit('delete', repo)"
       :disabled="deleting"
-      class="ml-4 flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-all"
+      class="ml-4 p-2.5 rounded-md border transition-all shrink-0"
       :class="
         deleting
           ? 'border-border text-fg-dim cursor-not-allowed'
-          : 'border-red/40 text-red hover:bg-red/10 hover:border-red active:bg-red/20 cursor-pointer'
+          : 'border-red/20 text-red/60 hover:text-red hover:bg-red/10 hover:border-red active:bg-red/20 cursor-pointer'
       "
+      aria-label="Delete repository"
     >
-      <svg
-        v-if="!deleting"
-        xmlns="http://www.w3.org/2000/svg"
-        class="h-3.5 w-3.5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <polyline points="3 6 5 6 21 6" />
-        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-        <path d="M10 11v6M14 11v6" />
-        <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
-      </svg>
-      <svg v-else class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="4"
-        />
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-        />
-      </svg>
-      <span>{{ deleting ? "Deleting..." : "Delete" }}</span>
+      <Loader2 v-if="deleting" :size="18" class="animate-spin" />
+      <Trash2 v-else :size="18" />
     </button>
   </div>
 </template>

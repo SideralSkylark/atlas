@@ -2,6 +2,7 @@
 import { ref, onMounted } from "vue";
 import { useRepos } from "../composables/useRepos";
 import type { RepoInfo } from "../composables/useRepos";
+import { Settings, X, PackageOpen } from "@lucide/vue";
 import RepoClone from "./RepoClone.vue";
 import RepoItem from "./RepoItem.vue";
 import CredentialsManager from "./CredentialsManager.vue";
@@ -47,25 +48,33 @@ onMounted(loadRepos);
 
 <template>
   <div>
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-xl font-bold text-yellow">Atlas</h1>
+    <div class="flex justify-between items-center mb-8">
+      <h1 class="text-2xl font-black text-yellow tracking-tight">Atlas</h1>
       <button
         @click="showCredentials = !showCredentials"
-        class="text-xs px-2 py-1 rounded border border-border text-fg-dim hover:text-fg transition-colors cursor-pointer"
+        class="p-2 rounded-full border border-border text-fg-dim hover:text-fg hover:border-fg-dim transition-all active:scale-90 cursor-pointer"
+        :class="{ 'bg-bg3 border-fg-dim text-fg': showCredentials }"
+        :title="showCredentials ? 'Close Settings' : 'Settings'"
       >
-        {{ showCredentials ? "Close Settings" : "Settings" }}
+        <X v-if="showCredentials" :size="20" />
+        <Settings v-else :size="20" />
       </button>
     </div>
 
-    <div v-if="showCredentials">
-      <CredentialsManager />
-    </div>
+    <Transition name="slide">
+      <div v-if="showCredentials" class="mb-8">
+        <CredentialsManager />
+      </div>
+    </Transition>
 
     <RepoClone :cloning="cloning" @clone="onClone" />
 
-    <p v-if="repos.length === 0" class="text-fg-dim">No repos yet.</p>
+    <div v-if="repos.length === 0" class="flex flex-col items-center justify-center py-16 text-fg-dim opacity-40">
+      <PackageOpen :size="48" class="mb-4 stroke-[1.5]" />
+      <p class="text-sm font-medium">No repositories yet.</p>
+    </div>
 
-    <div v-else>
+    <div v-else class="space-y-1">
       <RepoItem
         v-for="repo in repos"
         :key="repo.id"
@@ -77,3 +86,20 @@ onMounted(loadRepos);
     </div>
   </div>
 </template>
+
+<style scoped>
+.slide-enter-active,
+.slide-leave-active {
+  transition: all 0.3s ease;
+  max-height: 500px;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-10px);
+  margin-bottom: 0;
+  overflow: hidden;
+}
+</style>

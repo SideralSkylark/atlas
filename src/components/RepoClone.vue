@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { Plus, Loader2 } from "@lucide/vue";
 
 const props = defineProps<{
   cloning: boolean;
@@ -20,45 +21,29 @@ function handleSubmit() {
 </script>
 
 <template>
-  <div class="mb-8">
-    <input
-      v-model="url"
-      placeholder="https://github.com/user/repo.git"
-      class="w-full px-3 py-2 mb-2 bg-bg3 text-fg border border-border rounded-md placeholder-fg-dim outline-none focus:border-green transition-colors font-mono text-sm"
-      @keyup.enter="handleSubmit"
-    />
+  <div class="mb-8 p-4 bg-bg1 border border-border rounded-lg shadow-sm">
+    <div class="flex flex-col gap-3">
+      <input
+        v-model="url"
+        placeholder="https://github.com/user/repo.git"
+        class="w-full px-4 py-3 bg-bg3 text-fg border border-border rounded-md placeholder-fg-dim outline-none focus:border-green transition-all font-mono text-sm"
+        @keyup.enter="handleSubmit"
+      />
 
-    <button
-      @click="handleSubmit"
-      :disabled="!url || cloning"
-      class="w-full py-2 font-semibold rounded-md transition-all flex items-center justify-center gap-2"
-      :class="
-        url && !cloning
-          ? 'bg-green text-bg0 active:brightness-90 cursor-pointer'
-          : 'bg-bg3 text-fg-dim cursor-not-allowed'
-      "
-    >
-      <svg
-        v-if="cloning"
-        class="animate-spin h-4 w-4"
-        viewBox="0 0 24 24"
-        fill="none"
+      <button
+        @click="handleSubmit"
+        :disabled="!url || cloning"
+        class="w-full py-3 font-bold rounded-md transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+        :class="
+          url && !cloning
+            ? 'bg-green text-bg0 active:brightness-90 cursor-pointer shadow-md'
+            : 'bg-bg3 text-fg-dim cursor-not-allowed'
+        "
       >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="4"
-        />
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-        />
-      </svg>
-      <span>{{ cloning ? "Cloning..." : "Clone" }}</span>
-    </button>
+        <Loader2 v-if="cloning" :size="20" class="animate-spin" />
+        <Plus v-else :size="20" />
+        <span>{{ cloning ? "Cloning..." : "Clone Repository" }}</span>
+      </button>
+    </div>
   </div>
 </template>
