@@ -38,9 +38,9 @@ devices in your workflow don't need Atlas. They just need Git.
 - [x] Clone over HTTPS
 - [x] List repos
 - [x] Browse file tree
-- [ ] Pull (fetch + merge)
-- [ ] Push over HTTPS
-- [ ] PAT credential management
+- [x] Pull (fetch + merge)
+- [x] Push over HTTPS
+- [x] PAT credential management
 
 ### Phase 2 — File Rendering
 - [ ] Render HTML files in WebView

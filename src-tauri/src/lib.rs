@@ -1,8 +1,57 @@
-use git2::{build::RepoBuilder, CertificateCheckStatus, FetchOptions, RemoteCallbacks, Repository};
+use git2::{
+    build::RepoBuilder, Cred, CertificateCheckStatus, FetchOptions, PushOptions, RemoteCallbacks, Repository,
+};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::{command, AppHandle, Manager, Runtime};
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct Credentials {
+    pub pats: HashMap<String, String>, // domain -> token
+}
+
+fn get_credentials_path<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
+    app.path()
+        .app_data_dir()
+        .expect("failed to get app data dir")
+        .join("credentials.json")
+}
+
+fn load_credentials<R: Runtime>(app: &AppHandle<R>) -> Credentials {
+    let path = get_credentials_path(app);
+    if !path.exists() {
+        return Credentials::default();
+    }
+    fs::read_to_string(path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+#[command]
+fn save_pat<R: Runtime>(app: AppHandle<R>, domain: String, token: String) -> Result<(), String> {
+    let mut creds = load_credentials(&app);
+    creds.pats.insert(domain, token);
+    let path = get_credentials_path(&app);
+    let json = serde_json::to_string(&creds).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| e.to_string())
+}
+
+#[command]
+fn get_pats<R: Runtime>(app: AppHandle<R>) -> HashMap<String, String> {
+    load_credentials(&app).pats
+}
+
+#[command]
+fn delete_pat<R: Runtime>(app: AppHandle<R>, domain: String) -> Result<(), String> {
+    let mut creds = load_credentials(&app);
+    creds.pats.remove(&domain);
+    let path = get_credentials_path(&app);
+    let json = serde_json::to_string(&creds).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| e.to_string())
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct CloneResult {
@@ -39,6 +88,14 @@ fn repo_name_from_url(url: &str) -> String {
         .to_string()
 }
 
+fn get_domain_from_url(url: &str) -> Option<String> {
+    url.strip_prefix("https://")
+        .or_else(|| url.strip_prefix("http://"))?
+        .split('/')
+        .next()
+        .map(|s| s.to_string())
+}
+
 #[command]
 fn clone_repo<R: Runtime>(app: AppHandle<R>, url: String) -> CloneResult {
     let name = repo_name_from_url(&url);
@@ -51,8 +108,20 @@ fn clone_repo<R: Runtime>(app: AppHandle<R>, url: String) -> CloneResult {
         };
     }
 
+    let domain = get_domain_from_url(&url);
+    let creds = load_credentials(&app);
+
     let mut callbacks = RemoteCallbacks::new();
     callbacks.certificate_check(|_, _| Ok(CertificateCheckStatus::CertificateOk));
+    
+    if let Some(d) = domain {
+        if let Some(token) = creds.pats.get(&d) {
+            let token_clone = token.clone();
+            callbacks.credentials(move |_url, _username_from_url, _allowed_types| {
+                Cred::userpass_plaintext("git", &token_clone)
+            });
+        }
+    }
 
     let mut fetch_options = FetchOptions::new();
     fetch_options.remote_callbacks(callbacks);
@@ -176,6 +245,92 @@ fn read_file<R: Runtime>(
     fs::read_to_string(path).map_err(|e| e.to_string())
 }
 
+#[command]
+fn git_pull<R: Runtime>(app: AppHandle<R>, repo_id: String) -> Result<CloneResult, String> {
+    let path = repo_path(&app, &repo_id);
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+    let mut remote = repo.find_remote("origin").map_err(|e| e.to_string())?;
+
+    let url = remote.url().unwrap_or("").to_string();
+    let domain = get_domain_from_url(&url);
+    let creds = load_credentials(&app);
+
+    let mut callbacks = RemoteCallbacks::new();
+    callbacks.certificate_check(|_, _| Ok(CertificateCheckStatus::CertificateOk));
+    
+    if let Some(d) = domain {
+        if let Some(token) = creds.pats.get(&d) {
+            let token_clone = token.clone();
+            callbacks.credentials(move |_url, _username_from_url, _allowed_types| {
+                Cred::userpass_plaintext("git", &token_clone)
+            });
+        }
+    }
+
+    let mut fetch_options = FetchOptions::new();
+    fetch_options.remote_callbacks(callbacks);
+
+    remote.fetch(&["main"], Some(&mut fetch_options), None).map_err(|e| e.to_string())?;
+
+    let fetch_head = repo.find_reference("FETCH_HEAD").map_err(|e| e.to_string())?;
+    let fetch_commit = repo.reference_to_annotated_commit(&fetch_head).map_err(|e| e.to_string())?;
+
+    let (analysis, _) = repo.merge_analysis(&[&fetch_commit]).map_err(|e| e.to_string())?;
+
+    if analysis.is_fast_forward() {
+        let refname = "refs/heads/main";
+        let mut reference = repo.find_reference(refname).map_err(|e| e.to_string())?;
+        reference.set_target(fetch_commit.id(), "Fast-forward").map_err(|e| e.to_string())?;
+        repo.set_head(refname).map_err(|e| e.to_string())?;
+        repo.checkout_head(Some(git2::build::CheckoutBuilder::default().force())).map_err(|e| e.to_string())?;
+        
+        Ok(CloneResult {
+            success: true,
+            message: "Pulled successfully (Fast-forward)".to_string(),
+        })
+    } else if analysis.is_up_to_date() {
+        Ok(CloneResult {
+            success: true,
+            message: "Already up to date".to_string(),
+        })
+    } else {
+        Err("Pull failed: Only fast-forward merges are supported for now.".to_string())
+    }
+}
+
+#[command]
+fn git_push<R: Runtime>(app: AppHandle<R>, repo_id: String) -> Result<CloneResult, String> {
+    let path = repo_path(&app, &repo_id);
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+    let mut remote = repo.find_remote("origin").map_err(|e| e.to_string())?;
+
+    let url = remote.url().unwrap_or("").to_string();
+    let domain = get_domain_from_url(&url);
+    let creds = load_credentials(&app);
+
+    let mut callbacks = RemoteCallbacks::new();
+    callbacks.certificate_check(|_, _| Ok(CertificateCheckStatus::CertificateOk));
+    
+    if let Some(d) = domain {
+        if let Some(token) = creds.pats.get(&d) {
+            let token_clone = token.clone();
+            callbacks.credentials(move |_url, _username_from_url, _allowed_types| {
+                Cred::userpass_plaintext("git", &token_clone)
+            });
+        }
+    }
+
+    let mut push_options = PushOptions::new();
+    push_options.remote_callbacks(callbacks);
+
+    remote.push(&["refs/heads/main:refs/heads/main"], Some(&mut push_options)).map_err(|e| e.to_string())?;
+
+    Ok(CloneResult {
+        success: true,
+        message: "Pushed successfully".to_string(),
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -192,7 +347,12 @@ pub fn run() {
             delete_repo,
             list_repos,
             list_files,
-            read_file
+            read_file,
+            save_pat,
+            get_pats,
+            delete_pat,
+            git_pull,
+            git_push
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -29,7 +29,7 @@ function notify(msg: { type: "success" | "error"; text: string }) {
         mode="out-in"
       >
         <div v-if="selectedRepo" :key="'browser-' + selectedRepo.id">
-          <FileBrowser :repo="selectedRepo" @close="closeRepo" />
+          <FileBrowser :repo="selectedRepo" @close="closeRepo" @notify="notify" />
         </div>
         <div v-else key="repo-list">
           <RepoList @open="openRepo" @notify="notify" />

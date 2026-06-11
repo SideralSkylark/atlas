@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, watch } from "vue";
 import { useFileSystem } from "../composables/useFileSystem";
+import { useRepos } from "../composables/useRepos";
 import type { RepoInfo } from "../composables/useRepos";
 import FileContent from "./FileContent.vue";
 
@@ -10,6 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "close"): void;
+  (e: "notify", msg: { type: "success" | "error"; text: string }): void;
 }>();
 
 const {
@@ -22,6 +24,21 @@ const {
   enterDirectory,
   goBack,
 } = useFileSystem();
+
+const { pullRepo, pushRepo, syncing } = useRepos();
+
+async function onPull() {
+  const res = await pullRepo(props.repo.id);
+  emit("notify", { type: res.success ? "success" : "error", text: res.message });
+  if (res.success) {
+    await loadFiles(props.repo.id);
+  }
+}
+
+async function onPush() {
+  const res = await pushRepo(props.repo.id);
+  emit("notify", { type: res.success ? "success" : "error", text: res.message });
+}
 
 function handleBack() {
   if (!goBack()) {
@@ -49,22 +66,41 @@ watch(() => props.repo.id, () => loadFiles(props.repo.id));
 
 <template>
   <div>
-    <div class="flex items-center gap-3 mb-4">
-      <button
-        @click="handleBack"
-        class="px-3 py-1 border border-border rounded-md text-fg hover:border-fg-dim active:border-green transition-colors"
-      >
-        ← Back
-      </button>
-      <span class="font-bold text-fg truncate">
-        {{
-          selectedFileContent !== null
-            ? currentRelativePath.split("/").pop()
-            : !currentRelativePath
-            ? repo.name
-            : currentRelativePath.split("/").pop()
-        }}
-      </span>
+    <div class="flex items-center justify-between mb-4 gap-3">
+      <div class="flex items-center gap-3 overflow-hidden">
+        <button
+          @click="handleBack"
+          class="shrink-0 px-3 py-1 border border-border rounded-md text-fg hover:border-fg-dim active:border-green transition-colors cursor-pointer"
+        >
+          ← Back
+        </button>
+        <span class="font-bold text-fg truncate">
+          {{
+            selectedFileContent !== null
+              ? currentRelativePath.split("/").pop()
+              : !currentRelativePath
+              ? repo.name
+              : currentRelativePath.split("/").pop()
+          }}
+        </span>
+      </div>
+
+      <div v-if="!selectedFileContent && !currentRelativePath" class="flex gap-2 shrink-0">
+        <button
+          @click="onPull"
+          :disabled="syncing === repo.id"
+          class="px-2 py-1 text-xs border border-border rounded text-fg-dim hover:text-fg active:border-green transition-colors disabled:opacity-50 cursor-pointer"
+        >
+          {{ syncing === repo.id ? "..." : "Pull" }}
+        </button>
+        <button
+          @click="onPush"
+          :disabled="syncing === repo.id"
+          class="px-2 py-1 text-xs border border-border rounded text-fg-dim hover:text-fg active:border-green transition-colors disabled:opacity-50 cursor-pointer"
+        >
+          {{ syncing === repo.id ? "..." : "Push" }}
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="flex justify-center py-10">
