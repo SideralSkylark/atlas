@@ -21,6 +21,7 @@ export function useFileSystem() {
   const files = ref<FileEntry[]>([]);
   const searchResults = ref<SearchResult[]>([]);
   const currentRelativePath = ref("");
+  const currentFilePath = ref<string | null>(null);
   const renderedFile = ref<RenderedFile | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
@@ -71,6 +72,7 @@ export function useFileSystem() {
         repoId,
         relativePath: path,
       });
+      currentFilePath.value = path;
     } catch (e) {
       error.value = String(e);
       renderedFile.value = null;
@@ -82,6 +84,7 @@ export function useFileSystem() {
   async function openPath(repoId: string, path: string, isDir: boolean) {
     if (isDir) {
       currentRelativePath.value = path;
+      currentFilePath.value = null;
       searchResults.value = [];
       await loadFiles(repoId);
     } else {
@@ -92,6 +95,7 @@ export function useFileSystem() {
           repoId,
           relativePath: path,
         });
+        currentFilePath.value = path;
         // Update currentRelativePath to the parent of this file
         const parts = path.split("/");
         parts.pop();
@@ -106,6 +110,33 @@ export function useFileSystem() {
     }
   }
 
+  async function readRawFile(repoId: string, relativePath: string) {
+    loading.value = true;
+    error.value = null;
+    try {
+      return await invoke<string>("read_raw_file", { repoId, relativePath });
+    } catch (e) {
+      error.value = String(e);
+      return null;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function saveFile(repoId: string, relativePath: string, content: string) {
+    loading.value = true;
+    error.value = null;
+    try {
+      await invoke("write_file", { repoId, relativePath, content });
+      return true;
+    } catch (e) {
+      error.value = String(e);
+      return false;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   function enterDirectory(dirName: string) {
     currentRelativePath.value = currentRelativePath.value
       ? `${currentRelativePath.value}/${dirName}`
@@ -116,6 +147,7 @@ export function useFileSystem() {
   function goBack() {
     if (renderedFile.value !== null) {
       renderedFile.value = null;
+      currentFilePath.value = null;
       return true; // Stayed in the same directory
     }
 
@@ -131,6 +163,7 @@ export function useFileSystem() {
 
   function reset() {
     currentRelativePath.value = "";
+    currentFilePath.value = null;
     renderedFile.value = null;
     files.value = [];
     searchResults.value = [];
@@ -140,12 +173,15 @@ export function useFileSystem() {
     files,
     searchResults,
     currentRelativePath,
+    currentFilePath,
     renderedFile,
     loading,
     error,
     loadFiles,
     searchFiles,
     renderFile,
+    readRawFile,
+    saveFile,
     openPath,
     enterDirectory,
     goBack,

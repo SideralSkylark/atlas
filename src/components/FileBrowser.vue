@@ -17,6 +17,7 @@ import { useRepos } from "../composables/useRepos";
 import type { RepoInfo } from "../composables/useRepos";
 import FileContent from "./FileContent.vue";
 import GitWorkflow from "./GitWorkflow.vue";
+import Editor from "./Editor.vue";
 
 const props = defineProps<{
   repo: RepoInfo;
@@ -31,6 +32,7 @@ const {
   files,
   searchResults,
   currentRelativePath,
+  currentFilePath,
   renderedFile,
   loading,
   loadFiles,
@@ -46,6 +48,7 @@ const { pullRepo, pushRepo, syncing } = useRepos();
 const view = ref<"files" | "git">("files");
 const showSearch = ref(false);
 const searchQuery = ref("");
+const editingPath = ref<string | null>(null);
 
 const breadcrumbs = computed(() => {
   const parts = currentRelativePath.value ? currentRelativePath.value.split("/") : [];
@@ -131,10 +134,23 @@ watch(searchQuery, (newVal) => {
 onMounted(() => loadFiles(props.repo.id));
 
 watch(() => props.repo.id, () => loadFiles(props.repo.id));
+
+function handleEdit() {
+  editingPath.value = currentFilePath.value;
+}
 </script>
 
 <template>
   <div>
+    <!-- Editor Overlay -->
+    <Editor 
+      v-if="editingPath" 
+      :repo="repo" 
+      :relative-path="editingPath" 
+      @close="editingPath = null" 
+      @notify="(msg) => emit('notify', msg)"
+    />
+
     <!-- Header -->
     <div class="flex items-center justify-between mb-6 gap-4">
       <div class="flex items-center gap-2">
@@ -238,7 +254,7 @@ watch(() => props.repo.id, () => loadFiles(props.repo.id));
       </div>
 
       <div v-else-if="renderedFile !== null">
-        <FileContent :file="renderedFile" />
+        <FileContent :file="renderedFile" @edit="handleEdit" />
       </div>
 
       <!-- Search Results -->

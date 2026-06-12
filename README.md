@@ -70,10 +70,10 @@ devices in your workflow don't need Atlas. They just need Git.
 
 * [ ] add and delete files
 * [ ] delete branches
-* [ ] In-app text editor
-* [ ] Save file changes
-* [ ] Commit from editor
-* [ ] Push after commit
+* [x] In-app text editor
+* [x] Save file changes
+* [x] Commit from editor
+* [x] Push after commit
 
 ### Phase 6 — SSH Support
 

@@ -1,0 +1,197 @@
+<script setup lang="ts">
+import { ref, onMounted, computed } from "vue";
+import { 
+  Save, 
+  X, 
+  Check, 
+  GitCommit, 
+  Upload, 
+  Loader2,
+  AlertCircle
+} from "@lucide/vue";
+import { useFileSystem } from "../composables/useFileSystem";
+import { useGit } from "../composables/useGit";
+import { useRepos } from "../composables/useRepos";
+import type { RepoInfo } from "../composables/useRepos";
+
+const props = defineProps<{
+  repo: RepoInfo;
+  relativePath: string;
+}>();
+
+const emit = defineEmits<{
+  (e: "close"): void;
+  (e: "notify", msg: { type: "success" | "error"; text: string }): void;
+}>();
+
+const { readRawFile, saveFile, loading: fsLoading } = useFileSystem();
+const { commitChanges, loading: gitLoading } = useGit();
+const { pushRepo, syncing: pushLoading } = useRepos();
+
+const content = ref("");
+const originalContent = ref("");
+const commitMessage = ref("");
+const showCommitDialog = ref(false);
+const shouldPushAfterCommit = ref(false);
+const error = ref<string | null>(null);
+
+async function loadContent() {
+  const data = await readRawFile(props.repo.id, props.relativePath);
+  if (data !== null) {
+    content.value = data;
+    originalContent.value = data;
+  }
+}
+
+async function onSave() {
+  const success = await saveFile(props.repo.id, props.relativePath, content.value);
+  if (success) {
+    originalContent.value = content.value;
+    emit("notify", { type: "success", text: "File saved." });
+  } else {
+    emit("notify", { type: "error", text: "Failed to save file." });
+  }
+}
+
+async function onCommit() {
+  if (!commitMessage.value) return;
+  
+  // 1. Save file first
+  const saved = await saveFile(props.repo.id, props.relativePath, content.value);
+  if (!saved) return;
+
+  // 2. Stage and commit
+  // We need to stage it. In our current useGit, commitChanges doesn't stage everything.
+  // Actually, commitChanges in Rust backend uses index.write_tree().
+  // We should stage the file first.
+  const { stageFile } = useGit(); // Get a fresh one or refactor
+  await stageFile(props.repo.id, props.relativePath);
+  
+  try {
+    await commitChanges(props.repo.id, commitMessage.value, "Atlas User", "user@atlas.app");
+    emit("notify", { type: "success", text: "Changes committed." });
+    showCommitDialog.value = false;
+    commitMessage.value = "";
+    originalContent.value = content.value;
+
+    if (shouldPushAfterCommit.value) {
+      const res = await pushRepo(props.repo.id);
+      emit("notify", { type: res.success ? "success" : "error", text: res.message });
+    }
+  } catch (e) {
+    emit("notify", { type: "error", text: String(e) });
+  }
+}
+
+const hasChanges = computed(() => content.value !== originalContent.value);
+
+onMounted(loadContent);
+</script>
+
+<template>
+  <div class="fixed inset-0 z-50 bg-bg0 flex flex-col p-4 md:p-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4 gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <button
+          @click="emit('close')"
+          class="p-2 border border-border rounded-lg text-fg-dim hover:text-fg active:scale-95 transition-all cursor-pointer"
+        >
+          <X :size="20" />
+        </button>
+        <div class="min-w-0">
+          <h2 class="text-sm font-bold truncate">{{ relativePath.split('/').pop() }}</h2>
+          <p class="text-[10px] text-fg-dim truncate font-mono">{{ relativePath }}</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <button
+          @click="onSave"
+          :disabled="!hasChanges || fsLoading"
+          class="p-2 border border-border rounded-lg text-fg-dim hover:text-green hover:border-green active:scale-95 transition-all disabled:opacity-30 cursor-pointer"
+          title="Save"
+        >
+          <Loader2 v-if="fsLoading" :size="20" class="animate-spin" />
+          <Save v-else :size="20" />
+        </button>
+        <button
+          @click="showCommitDialog = true"
+          :disabled="fsLoading || gitLoading"
+          class="p-2 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 transition-all disabled:opacity-30 cursor-pointer"
+          title="Commit Changes"
+        >
+          <GitCommit :size="20" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Editor -->
+    <div class="flex-1 relative bg-bg1 border border-border rounded-xl overflow-hidden">
+      <textarea
+        v-model="content"
+        class="w-full h-full p-4 bg-transparent outline-none text-sm font-mono resize-none leading-relaxed"
+        spellcheck="false"
+      ></textarea>
+    </div>
+
+    <!-- Commit Dialog -->
+    <Transition name="fade">
+      <div v-if="showCommitDialog" class="fixed inset-0 z-[60] bg-bg0/80 backdrop-blur-sm flex items-center justify-center p-6">
+        <div class="w-full max-w-sm bg-bg1 border border-border rounded-2xl p-6 shadow-2xl space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold">Commit Changes</h3>
+            <button @click="showCommitDialog = false" class="text-fg-dim hover:text-fg"><X :size="20" /></button>
+          </div>
+          
+          <div class="space-y-3">
+            <textarea
+              v-model="commitMessage"
+              placeholder="Commit message..."
+              class="w-full h-24 p-3 bg-bg0 border border-border rounded-lg outline-none focus:border-yellow text-sm resize-none"
+              autofocus
+            ></textarea>
+            
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <div class="relative flex items-center">
+                <input type="checkbox" v-model="shouldPushAfterCommit" class="peer hidden" />
+                <div class="w-5 h-5 border-2 border-border rounded peer-checked:bg-yellow peer-checked:border-yellow transition-all"></div>
+                <Check class="absolute text-bg0 scale-0 peer-checked:scale-100 transition-all" :size="16" />
+              </div>
+              <span class="text-sm text-fg-dim group-hover:text-fg transition-colors">Push after commit</span>
+            </label>
+          </div>
+
+          <button
+            @click="onCommit"
+            :disabled="!commitMessage || gitLoading"
+            class="w-full py-3 bg-yellow text-bg0 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-30"
+          >
+            <Loader2 v-if="gitLoading || pushLoading === repo.id" :size="20" class="animate-spin" />
+            <template v-else>
+              <GitCommit :size="20" />
+              <span>Commit & {{ shouldPushAfterCommit ? 'Push' : 'Save' }}</span>
+            </template>
+          </button>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Unsaved Changes Warning -->
+    <div v-if="hasChanges" class="mt-4 flex items-center gap-2 text-[10px] text-orange animate-pulse">
+      <AlertCircle :size="12" />
+      <span>Unsaved changes</span>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

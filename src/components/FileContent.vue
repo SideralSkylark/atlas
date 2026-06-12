@@ -1,23 +1,40 @@
 <script setup lang="ts">
+import { Edit2 } from "@lucide/vue";
 import type { RenderedFile } from "../composables/useFileSystem";
 
 defineProps<{
   file: RenderedFile;
 }>();
+
+const emit = defineEmits<{
+  (e: "edit"): void;
+}>();
 </script>
 
 <template>
-  <div class="bg-bg1 border border-border rounded-xl overflow-hidden shadow-sm">
-    <!-- Code / Plain / HTML -->
-    <div v-if="file.file_type === 'code' || file.file_type === 'plain' || file.file_type === 'html'" class="p-4 overflow-x-auto">
-      <div v-if="file.file_type === 'code'" v-html="file.content" class="text-sm font-mono leading-relaxed whitespace-pre"></div>
-      <pre v-else-if="file.file_type === 'plain'" class="text-sm text-fg leading-relaxed font-mono whitespace-pre-wrap">{{ file.content }}</pre>
-      <div v-else-if="file.file_type === 'html'" v-html="file.content" class="bg-white text-black p-2 rounded min-h-[200px]"></div>
+  <div class="space-y-4">
+    <div class="flex justify-end">
+      <button
+        @click="emit('edit')"
+        class="flex items-center gap-2 px-3 py-1.5 bg-bg1 border border-border rounded-lg text-xs font-bold text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 transition-all cursor-pointer"
+      >
+        <Edit2 :size="14" />
+        <span>Edit File</span>
+      </button>
     </div>
 
-    <!-- Markdown -->
-    <div v-else-if="file.file_type === 'markdown'" class="p-6 prose-custom">
-      <div v-html="file.content"></div>
+    <div class="bg-bg1 border border-border rounded-xl overflow-hidden shadow-sm">
+      <!-- Code / Plain / HTML -->
+      <div v-if="file.file_type === 'code' || file.file_type === 'plain' || file.file_type === 'html'" class="p-4 overflow-x-auto">
+        <div v-if="file.file_type === 'code'" v-html="file.content" class="text-sm font-mono leading-relaxed whitespace-pre"></div>
+        <pre v-else-if="file.file_type === 'plain'" class="text-sm text-fg leading-relaxed font-mono whitespace-pre-wrap">{{ file.content }}</pre>
+        <div v-else-if="file.file_type === 'html'" v-html="file.content" class="bg-white text-black p-2 rounded min-h-[200px]"></div>
+      </div>
+
+      <!-- Markdown -->
+      <div v-else-if="file.file_type === 'markdown'" class="p-6 prose-custom">
+        <div v-html="file.content"></div>
+      </div>
     </div>
   </div>
 </template>
