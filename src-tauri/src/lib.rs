@@ -20,38 +20,64 @@ fn get_credentials_path<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
         .join("credentials.json")
 }
 
-fn load_credentials<R: Runtime>(app: &AppHandle<R>) -> Credentials {
-    let path = get_credentials_path(app);
-    if !path.exists() {
-        return Credentials::default();
+async fn load_credentials<R: Runtime>(app: &AppHandle<R>) -> Result<Credentials, String> {
+    #[cfg(target_os = "android")]
+    {
+        let aliases = atlas_keystore::list_secrets(app.clone()).await?;
+        let mut pats = HashMap::new();
+        for alias in aliases {
+            if let Ok(token) = atlas_keystore::get_secret(app.clone(), alias.clone()).await {
+                pats.insert(alias, token);
+            }
+        }
+        Ok(Credentials { pats })
     }
-    fs::read_to_string(path)
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+    #[cfg(not(target_os = "android"))]
+    {
+        let path = get_credentials_path(app);
+        if !path.exists() {
+            return Ok(Credentials::default());
+        }
+        let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+        serde_json::from_str(&content).map_err(|e| e.to_string())
+    }
 }
 
 #[command]
-fn save_pat<R: Runtime>(app: AppHandle<R>, domain: String, token: String) -> Result<(), String> {
-    let mut creds = load_credentials(&app);
-    creds.pats.insert(domain, token);
-    let path = get_credentials_path(&app);
-    let json = serde_json::to_string(&creds).map_err(|e| e.to_string())?;
-    fs::write(path, json).map_err(|e| e.to_string())
+async fn save_pat<R: Runtime>(app: AppHandle<R>, domain: String, token: String) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        atlas_keystore::store_secret(app, domain, token).await
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let mut creds = load_credentials(&app).await?;
+        creds.pats.insert(domain, token);
+        let path = get_credentials_path(&app);
+        let json = serde_json::to_string(&creds).map_err(|e| e.to_string())?;
+        fs::write(path, json).map_err(|e| e.to_string())
+    }
 }
 
 #[command]
-fn get_pats<R: Runtime>(app: AppHandle<R>) -> HashMap<String, String> {
-    load_credentials(&app).pats
+async fn get_pats<R: Runtime>(app: AppHandle<R>) -> Result<HashMap<String, String>, String> {
+    load_credentials(&app).await.map(|c| c.pats)
 }
 
 #[command]
-fn delete_pat<R: Runtime>(app: AppHandle<R>, domain: String) -> Result<(), String> {
-    let mut creds = load_credentials(&app);
-    creds.pats.remove(&domain);
-    let path = get_credentials_path(&app);
-    let json = serde_json::to_string(&creds).map_err(|e| e.to_string())?;
-    fs::write(path, json).map_err(|e| e.to_string())
+async fn delete_pat<R: Runtime>(app: AppHandle<R>, domain: String) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        atlas_keystore::delete_secret(app, domain).await
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let mut creds = load_credentials(&app).await?;
+        creds.pats.remove(&domain);
+        let path = get_credentials_path(&app);
+        let json = serde_json::to_string(&creds).map_err(|e| e.to_string())?;
+        fs::write(path, json).map_err(|e| e.to_string())
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -97,8 +123,8 @@ fn get_domain_from_url(url: &str) -> Option<String> {
         .map(|s| s.to_string())
 }
 
-fn make_callbacks<R: Runtime>(app: &AppHandle<R>, url: &str) -> RemoteCallbacks<'static> {
-    let creds = load_credentials(app);
+async fn make_callbacks<R: Runtime>(app: &AppHandle<R>, url: &str) -> Result<RemoteCallbacks<'static>, String> {
+    let creds = load_credentials(app).await?;
 
     let mut callbacks = RemoteCallbacks::new();
     callbacks.certificate_check(|_, _| Ok(CertificateCheckStatus::CertificateOk));
@@ -110,11 +136,11 @@ fn make_callbacks<R: Runtime>(app: &AppHandle<R>, url: &str) -> RemoteCallbacks<
         }
     }
 
-    callbacks
+    Ok(callbacks)
 }
 
 #[command]
-fn clone_repo<R: Runtime>(app: AppHandle<R>, url: String) -> CloneResult {
+async fn clone_repo<R: Runtime>(app: AppHandle<R>, url: String) -> CloneResult {
     let name = repo_name_from_url(&url);
     let dest = repo_path(&app, &name);
 
@@ -125,7 +151,10 @@ fn clone_repo<R: Runtime>(app: AppHandle<R>, url: String) -> CloneResult {
         };
     }
 
-    let callbacks = make_callbacks(&app, &url);
+    let callbacks = match make_callbacks(&app, &url).await {
+        Ok(c) => c,
+        Err(e) => return CloneResult { success: false, message: e },
+    };
 
     let mut fetch_options = FetchOptions::new();
     fetch_options.remote_callbacks(callbacks);
@@ -231,14 +260,19 @@ fn list_files<R: Runtime>(
 }
 
 #[command]
-fn git_pull<R: Runtime>(app: AppHandle<R>, repo_id: String) -> Result<CloneResult, String> {
+async fn git_pull<R: Runtime>(app: AppHandle<R>, repo_id: String) -> Result<CloneResult, String> {
     let path = repo_path(&app, &repo_id);
+
+    let url = {
+        let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+        let remote = repo.find_remote("origin").map_err(|e| e.to_string())?;
+        remote.url().unwrap_or("").to_string()
+    };
+
+    let callbacks = make_callbacks(&app, &url).await?;
+
     let repo = Repository::open(&path).map_err(|e| e.to_string())?;
     let mut remote = repo.find_remote("origin").map_err(|e| e.to_string())?;
-
-    let url = remote.url().unwrap_or("").to_string();
-
-    let callbacks = make_callbacks(&app, &url);
 
     let mut fetch_options = FetchOptions::new();
     fetch_options.remote_callbacks(callbacks);
@@ -286,14 +320,19 @@ fn git_pull<R: Runtime>(app: AppHandle<R>, repo_id: String) -> Result<CloneResul
 }
 
 #[command]
-fn git_push<R: Runtime>(app: AppHandle<R>, repo_id: String) -> Result<CloneResult, String> {
+async fn git_push<R: Runtime>(app: AppHandle<R>, repo_id: String) -> Result<CloneResult, String> {
     let path = repo_path(&app, &repo_id);
+
+    let url = {
+        let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+        let remote = repo.find_remote("origin").map_err(|e| e.to_string())?;
+        remote.url().unwrap_or("").to_string()
+    };
+
+    let callbacks = make_callbacks(&app, &url).await?;
+
     let repo = Repository::open(&path).map_err(|e| e.to_string())?;
     let mut remote = repo.find_remote("origin").map_err(|e| e.to_string())?;
-
-    let url = remote.url().unwrap_or("").to_string();
-
-    let callbacks = make_callbacks(&app, &url);
 
     let mut push_options = PushOptions::new();
     push_options.remote_callbacks(callbacks);
@@ -388,6 +427,8 @@ fn render_file<R: Runtime>(
 
 use walkdir::WalkDir;
 
+mod atlas_keystore;
+
 #[derive(Serialize, Deserialize)]
 pub struct SearchResult {
     pub name: String,
@@ -455,6 +496,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
+        .plugin(atlas_keystore::init())
         .invoke_handler(tauri::generate_handler![
             clone_repo,
             delete_repo,

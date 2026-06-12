@@ -53,9 +53,8 @@ devices in your workflow don't need Atlas. They just need Git.
 
 ### Phase 3 — Security
 
-* [ ] Android Keystore integration
-* [ ] Secure PAT storage
-* [ ] Credential migration from JSON storage
+* [x] Android Keystore integration
+* [x] Secure PAT storage
 
 ### Phase 4 — Git Workflow
 
