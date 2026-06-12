@@ -8,13 +8,15 @@ import {
   FileText, 
   Loader2,
   Home,
-  Search
+  Search,
+  GitBranch
 } from "@lucide/vue";
 import { onMounted, watch, computed, ref } from "vue";
 import { useFileSystem } from "../composables/useFileSystem";
 import { useRepos } from "../composables/useRepos";
 import type { RepoInfo } from "../composables/useRepos";
 import FileContent from "./FileContent.vue";
+import GitWorkflow from "./GitWorkflow.vue";
 
 const props = defineProps<{
   repo: RepoInfo;
@@ -41,6 +43,7 @@ const {
 
 const { pullRepo, pushRepo, syncing } = useRepos();
 
+const view = ref<"files" | "git">("files");
 const showSearch = ref(false);
 const searchQuery = ref("");
 
@@ -82,6 +85,11 @@ async function onPush() {
 }
 
 function handleBack() {
+  if (view.value === "git") {
+    view.value = "files";
+    return;
+  }
+
   if (showSearch.value) {
     showSearch.value = false;
     searchQuery.value = "";
@@ -129,15 +137,34 @@ watch(() => props.repo.id, () => loadFiles(props.repo.id));
   <div>
     <!-- Header -->
     <div class="flex items-center justify-between mb-6 gap-4">
-      <button
-        @click="handleBack"
-        class="shrink-0 p-2 border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 transition-all cursor-pointer"
-        aria-label="Back"
-      >
-        <ChevronLeft :size="20" />
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          @click="handleBack"
+          class="shrink-0 p-2 border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 transition-all cursor-pointer"
+          aria-label="Back"
+        >
+          <ChevronLeft :size="20" />
+        </button>
 
-      <div class="flex-1 overflow-x-auto no-scrollbar py-1">
+        <div class="flex bg-bg1 border border-border rounded-lg p-0.5">
+          <button
+            @click="view = 'files'"
+            class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer"
+            :class="view === 'files' ? 'bg-bg3 text-fg shadow-sm' : 'text-fg-dim hover:text-fg'"
+          >
+            Files
+          </button>
+          <button
+            @click="view = 'git'"
+            class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer"
+            :class="view === 'git' ? 'bg-bg3 text-fg shadow-sm' : 'text-fg-dim hover:text-fg'"
+          >
+            Git
+          </button>
+        </div>
+      </div>
+
+      <div v-if="view === 'files'" class="flex-1 overflow-x-auto no-scrollbar py-1">
         <div class="flex items-center gap-1.5 whitespace-nowrap text-sm font-medium">
           <template v-for="(crumb, i) in breadcrumbs" :key="crumb.path">
             <button
@@ -152,7 +179,7 @@ watch(() => props.repo.id, () => loadFiles(props.repo.id));
         </div>
       </div>
 
-      <div v-if="!renderedFile && !currentRelativePath" class="flex gap-2 shrink-0">
+      <div v-if="view === 'files' && !renderedFile && !currentRelativePath" class="flex gap-2 shrink-0">
         <button
           @click="showSearch = !showSearch"
           class="p-2 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 transition-all cursor-pointer"
@@ -182,72 +209,80 @@ watch(() => props.repo.id, () => loadFiles(props.repo.id));
       </div>
     </div>
 
-    <!-- Search Bar -->
-    <Transition name="slide">
-      <div v-if="showSearch" class="mb-6">
-        <div class="relative">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-fg-dim" :size="16" />
-          <input
-            v-model="searchQuery"
-            placeholder="Search filenames..."
-            class="w-full pl-10 pr-4 py-2.5 bg-bg1 border border-border rounded-lg outline-none focus:border-yellow transition-all text-sm"
-            autofocus
-          />
-        </div>
-      </div>
-    </Transition>
-
-    <!-- Content -->
-    <div v-if="loading" class="flex flex-col items-center justify-center py-20 opacity-50">
-      <Loader2 :size="32" class="animate-spin text-green mb-2" />
-      <span class="text-xs font-mono">Loading...</span>
+    <!-- Git View -->
+    <div v-if="view === 'git'">
+      <GitWorkflow :repo="repo" />
     </div>
 
-    <div v-else-if="renderedFile !== null">
-      <FileContent :file="renderedFile" />
-    </div>
-
-    <!-- Search Results -->
-    <div v-else-if="searchQuery" class="space-y-1">
-      <div
-        v-for="result in searchResults"
-        :key="result.relative_path"
-        @click="handleSearchEntry(result)"
-        class="flex flex-col px-4 py-3 bg-bg1 border border-border rounded-lg cursor-pointer hover:border-fg-dim active:scale-[0.99] transition-all"
-      >
-        <div class="flex items-center gap-3">
-          <div :class="result.is_dir ? 'text-yellow' : 'text-fg-dim'">
-            <Folder v-if="result.is_dir" :size="18" class="fill-yellow/10" />
-            <FileText v-else :size="18" />
+    <!-- Files View -->
+    <div v-else>
+      <!-- Search Bar -->
+      <Transition name="slide">
+        <div v-if="showSearch" class="mb-6">
+          <div class="relative">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-fg-dim" :size="16" />
+            <input
+              v-model="searchQuery"
+              placeholder="Search filenames..."
+              class="w-full pl-10 pr-4 py-2.5 bg-bg1 border border-border rounded-lg outline-none focus:border-yellow transition-all text-sm"
+              autofocus
+            />
           </div>
-          <span class="truncate font-bold text-sm">{{ result.name }}</span>
         </div>
-        <span class="text-[10px] text-fg-dim mt-1 truncate font-mono opacity-60 ml-7">{{ result.relative_path }}</span>
-      </div>
-      
-      <div v-if="searchResults.length === 0" class="flex flex-col items-center justify-center py-16 text-fg-dim opacity-30">
-        <Search :size="40" class="mb-3 stroke-[1.5]" />
-        <p class="text-sm">No results found for "{{ searchQuery }}"</p>
-      </div>
-    </div>
+      </Transition>
 
-    <div v-else class="space-y-1">
-      <div
-        v-for="entry in files"
-        :key="entry.name"
-        @click="handleEntry(entry)"
-        class="flex items-center gap-3 px-4 py-4 bg-bg1 border border-border rounded-lg cursor-pointer hover:border-fg-dim active:scale-[0.99] transition-all"
-      >
-        <div :class="entry.is_dir ? 'text-yellow' : 'text-fg-dim'">
-          <Folder v-if="entry.is_dir" :size="20" class="fill-yellow/10" />
-          <FileText v-else :size="20" />
-        </div>
-        <span class="truncate font-medium text-sm">{{ entry.name }}</span>
+      <!-- Content -->
+      <div v-if="loading" class="flex flex-col items-center justify-center py-20 opacity-50">
+        <Loader2 :size="32" class="animate-spin text-green mb-2" />
+        <span class="text-xs font-mono">Loading...</span>
       </div>
-      
-      <div v-if="files.length === 0" class="flex flex-col items-center justify-center py-16 text-fg-dim opacity-30">
-        <Home :size="40" class="mb-3 stroke-[1.5]" />
-        <p class="text-sm">Empty directory</p>
+
+      <div v-else-if="renderedFile !== null">
+        <FileContent :file="renderedFile" />
+      </div>
+
+      <!-- Search Results -->
+      <div v-else-if="searchQuery" class="space-y-1">
+        <div
+          v-for="result in searchResults"
+          :key="result.relative_path"
+          @click="handleSearchEntry(result)"
+          class="flex flex-col px-4 py-3 bg-bg1 border border-border rounded-lg cursor-pointer hover:border-fg-dim active:scale-[0.99] transition-all"
+        >
+          <div class="flex items-center gap-3">
+            <div :class="result.is_dir ? 'text-yellow' : 'text-fg-dim'">
+              <Folder v-if="result.is_dir" :size="18" class="fill-yellow/10" />
+              <FileText v-else :size="18" />
+            </div>
+            <span class="truncate font-bold text-sm">{{ result.name }}</span>
+          </div>
+          <span class="text-[10px] text-fg-dim mt-1 truncate font-mono opacity-60 ml-7">{{ result.relative_path }}</span>
+        </div>
+        
+        <div v-if="searchResults.length === 0" class="flex flex-col items-center justify-center py-16 text-fg-dim opacity-30">
+          <Search :size="40" class="mb-3 stroke-[1.5]" />
+          <p class="text-sm">No results found for "{{ searchQuery }}"</p>
+        </div>
+      </div>
+
+      <div v-else class="space-y-1">
+        <div
+          v-for="entry in files"
+          :key="entry.name"
+          @click="handleEntry(entry)"
+          class="flex items-center gap-3 px-4 py-4 bg-bg1 border border-border rounded-lg cursor-pointer hover:border-fg-dim active:scale-[0.99] transition-all"
+        >
+          <div :class="entry.is_dir ? 'text-yellow' : 'text-fg-dim'">
+            <Folder v-if="entry.is_dir" :size="20" class="fill-yellow/10" />
+            <FileText v-else :size="20" />
+          </div>
+          <span class="truncate font-medium text-sm">{{ entry.name }}</span>
+        </div>
+        
+        <div v-if="files.length === 0" class="flex flex-col items-center justify-center py-16 text-fg-dim opacity-30">
+          <Home :size="40" class="mb-3 stroke-[1.5]" />
+          <p class="text-sm">Empty directory</p>
+        </div>
       </div>
     </div>
   </div>

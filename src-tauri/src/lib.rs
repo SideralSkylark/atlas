@@ -353,6 +353,283 @@ async fn git_push<R: Runtime>(app: AppHandle<R>, repo_id: String) -> Result<Clon
     })
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct BranchInfo {
+    pub name: String,
+    pub is_current: bool,
+    pub is_remote: bool,
+}
+
+#[command]
+fn list_branches<R: Runtime>(app: AppHandle<R>, repo_id: String) -> Result<Vec<BranchInfo>, String> {
+    let path = repo_path(&app, &repo_id);
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+    let branches = repo.branches(None).map_err(|e| e.to_string())?;
+
+    let mut branch_list = Vec::new();
+    for branch_res in branches {
+        let (branch, branch_type) = branch_res.map_err(|e| e.to_string())?;
+        let name = branch
+            .name()
+            .map_err(|e| e.to_string())?
+            .ok_or("Invalid branch name")?
+            .to_string();
+        let is_current = branch.is_head();
+        let is_remote = branch_type == git2::BranchType::Remote;
+
+        branch_list.push(BranchInfo {
+            name,
+            is_current,
+            is_remote,
+        });
+    }
+
+    Ok(branch_list)
+}
+
+#[command]
+fn create_branch<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    branch_name: String,
+) -> Result<(), String> {
+    let path = repo_path(&app, &repo_id);
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+    let head = repo.head().map_err(|e| e.to_string())?;
+    let target = head.peel_to_commit().map_err(|e| e.to_string())?;
+    repo.branch(&branch_name, &target, false)
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[command]
+fn switch_branch<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    branch_name: String,
+) -> Result<(), String> {
+    let path = repo_path(&app, &repo_id);
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+
+    let (object, reference) = repo.revparse_ext(&branch_name).map_err(|e| e.to_string())?;
+
+    repo.checkout_tree(&object, Some(git2::build::CheckoutBuilder::default().force()))
+        .map_err(|e| e.to_string())?;
+
+    if let Some(refname) = reference.and_then(|r| r.name().map(|n| n.to_string())) {
+        repo.set_head(&refname).map_err(|e| e.to_string())?;
+    } else {
+        repo.set_head_detached(object.id()).map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct CommitInfo {
+    pub hash: String,
+    pub author: String,
+    pub message: String,
+    pub date: i64,
+}
+
+#[command]
+fn get_commit_history<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    limit: usize,
+) -> Result<Vec<CommitInfo>, String> {
+    let path = repo_path(&app, &repo_id);
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+
+    let mut revwalk = repo.revwalk().map_err(|e| e.to_string())?;
+    revwalk.push_head().map_err(|e| e.to_string())?;
+
+    let mut commits = Vec::new();
+    for id in revwalk.take(limit) {
+        let id = id.map_err(|e| e.to_string())?;
+        let commit = repo.find_commit(id).map_err(|e| e.to_string())?;
+
+        commits.push(CommitInfo {
+            hash: commit.id().to_string(),
+            author: commit.author().name().unwrap_or("Unknown").to_string(),
+            message: commit.message().unwrap_or("").to_string(),
+            date: commit.time().seconds(),
+        });
+    }
+
+    Ok(commits)
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct StatusEntry {
+    pub path: String,
+    pub status: String, // "Modified", "New", "Deleted", "Renamed", etc.
+    pub staged: bool,
+}
+
+#[command]
+fn get_status<R: Runtime>(app: AppHandle<R>, repo_id: String) -> Result<Vec<StatusEntry>, String> {
+    let path = repo_path(&app, &repo_id);
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+
+    let mut status_options = git2::StatusOptions::new();
+    status_options
+        .include_untracked(true)
+        .recurse_untracked_dirs(true);
+
+    let statuses = repo
+        .statuses(Some(&mut status_options))
+        .map_err(|e| e.to_string())?;
+
+    let mut entries = Vec::new();
+    for entry in statuses.iter() {
+        let path = entry.path().unwrap_or("").to_string();
+        let status = entry.status();
+
+        let status_str = if status.is_index_new() || status.is_wt_new() {
+            "New"
+        } else if status.is_index_modified() || status.is_wt_modified() {
+            "Modified"
+        } else if status.is_index_deleted() || status.is_wt_deleted() {
+            "Deleted"
+        } else if status.is_index_renamed() || status.is_wt_renamed() {
+            "Renamed"
+        } else {
+            "Other"
+        };
+
+        let staged = status.is_index_new()
+            || status.is_index_modified()
+            || status.is_index_deleted()
+            || status.is_index_renamed();
+
+        entries.push(StatusEntry {
+            path,
+            status: status_str.to_string(),
+            staged,
+        });
+    }
+
+    Ok(entries)
+}
+
+#[command]
+fn stage_file<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    filepath: String,
+) -> Result<(), String> {
+    let path = repo_path(&app, &repo_id);
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+    let mut index = repo.index().map_err(|e| e.to_string())?;
+
+    let full_path = path.join(&filepath);
+    if full_path.exists() {
+        index
+            .add_path(std::path::Path::new(&filepath))
+            .map_err(|e| e.to_string())?;
+    } else {
+        index
+            .remove_path(std::path::Path::new(&filepath))
+            .map_err(|e| e.to_string())?;
+    }
+    index.write().map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[command]
+fn unstage_file<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    filepath: String,
+) -> Result<(), String> {
+    let path = repo_path(&app, &repo_id);
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+
+    let head = repo.head().map_err(|e| e.to_string())?;
+    let commit = head.peel_to_commit().map_err(|e| e.to_string())?;
+
+    repo.reset_default(Some(commit.as_object()), &[filepath])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[command]
+fn commit_changes<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    message: String,
+    author_name: String,
+    author_email: String,
+) -> Result<(), String> {
+    let path = repo_path(&app, &repo_id);
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+    let mut index = repo.index().map_err(|e| e.to_string())?;
+    let tree_id = index.write_tree().map_err(|e| e.to_string())?;
+    let tree = repo.find_tree(tree_id).map_err(|e| e.to_string())?;
+
+    let sig = git2::Signature::now(&author_name, &author_email).map_err(|e| e.to_string())?;
+
+    let parent_commit = repo.head().and_then(|h| h.peel_to_commit()).ok();
+    let parents = if let Some(ref p) = parent_commit {
+        vec![p]
+    } else {
+        vec![]
+    };
+
+    repo.commit(Some("HEAD"), &sig, &sig, &message, &tree, &parents)
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[command]
+fn get_diff<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    filepath: Option<String>,
+    staged: bool,
+) -> Result<String, String> {
+    let path = repo_path(&app, &repo_id);
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+
+    let mut diff_options = git2::DiffOptions::new();
+    if let Some(ref f) = filepath {
+        diff_options.pathspec(f);
+    }
+
+    let diff = if staged {
+        let head = repo.head().and_then(|h| h.peel_to_tree()).ok();
+        repo.diff_tree_to_index(
+            head.as_ref(),
+            Some(&repo.index().map_err(|e| e.to_string())?),
+            Some(&mut diff_options),
+        )
+    } else {
+        repo.diff_index_to_workdir(None, Some(&mut diff_options))
+    }
+    .map_err(|e| e.to_string())?;
+
+    let mut diff_text = String::new();
+    diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+        let prefix = match line.origin() {
+            '+' => "+",
+            '-' => "-",
+            ' ' => " ",
+            _ => "",
+        };
+        diff_text.push_str(prefix);
+        diff_text.push_str(std::str::from_utf8(line.content()).unwrap_or(""));
+        true
+    })
+    .map_err(|e| e.to_string())?;
+
+    Ok(diff_text)
+}
+
 use pulldown_cmark::{html, Parser};
 use syntect::highlighting::ThemeSet;
 use syntect::html::highlighted_html_for_string;
@@ -429,6 +706,30 @@ use walkdir::WalkDir;
 
 mod atlas_keystore;
 
+#[command]
+fn read_raw_file<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    relative_path: String,
+) -> Result<String, String> {
+    let path = repo_path(&app, &repo_id).join(&relative_path);
+    if !path.exists() {
+        return Err("File not found".to_string());
+    }
+    fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+#[command]
+fn write_file<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    relative_path: String,
+    content: String,
+) -> Result<(), String> {
+    let path = repo_path(&app, &repo_id).join(&relative_path);
+    fs::write(&path, content).map_err(|e| e.to_string())
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct SearchResult {
     pub name: String,
@@ -502,6 +803,17 @@ pub fn run() {
             delete_repo,
             list_repos,
             list_files,
+            list_branches,
+            create_branch,
+            switch_branch,
+            get_commit_history,
+            get_status,
+            stage_file,
+            unstage_file,
+            commit_changes,
+            get_diff,
+            read_raw_file,
+            write_file,
             render_file,
             search_files,
             save_pat,

@@ -58,16 +58,18 @@ devices in your workflow don't need Atlas. They just need Git.
 
 ### Phase 4 — Git Workflow
 
-* [ ] Branch list
-* [ ] Create branch
-* [ ] Switch branch
-* [ ] Commit history viewer
-* [ ] Staging area
-* [ ] Commit changes
-* [ ] Diff viewer
+* [x] Branch list
+* [x] Create branch
+* [x] Switch branch
+* [x] Commit history viewer
+* [x] Staging area
+* [x] Commit changes
+* [x] Diff viewer
 
 ### Phase 5 — Editor
 
+* [ ] add and delete files
+* [ ] delete branches
 * [ ] In-app text editor
 * [ ] Save file changes
 * [ ] Commit from editor
