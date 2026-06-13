@@ -5,6 +5,7 @@ export interface RepoInfo {
   id: string;
   name: string;
   branch: string;
+  last_modified?: number;
 }
 
 export function useRepos() {

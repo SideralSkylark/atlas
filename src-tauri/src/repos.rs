@@ -9,6 +9,7 @@ pub struct RepoInfo {
     pub id: String,
     pub name: String,
     pub branch: String,
+    pub last_modified: Option<u64>,
 }
 
 // this is badly written code this should be named something else
@@ -38,15 +39,26 @@ pub fn list_repos<R: Runtime>(app: AppHandle<R>) -> Vec<RepoInfo> {
                         .ok()
                         .and_then(|h| h.shorthand().map(|s| s.to_string()))
                         .unwrap_or_else(|| "detached".to_string());
+                    
+                    let last_modified = fs::metadata(&path)
+                        .ok()
+                        .and_then(|m| m.modified().ok())
+                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                        .map(|d| d.as_secs());
+
                     repos.push(RepoInfo {
                         id: entry.file_name().to_string_lossy().to_string(),
                         name: entry.file_name().to_string_lossy().to_string(),
                         branch,
+                        last_modified,
                     });
                 }
             }
         }
     }
+
+    // Sort by last modified descending
+    repos.sort_by(|a, b| b.last_modified.cmp(&a.last_modified));
 
     repos
 }
