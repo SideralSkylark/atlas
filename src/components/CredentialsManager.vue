@@ -58,7 +58,7 @@ onMounted(loadPats);
         :key="d"
         class="flex justify-between items-center px-4 py-3 bg-bg0/50 rounded-lg border border-border/30"
       >
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2" title="Token saved securely">
           <ShieldAlert :size="14" class="text-aqua" />
           <span class="text-sm font-mono text-fg">{{ d }}</span>
         </div>

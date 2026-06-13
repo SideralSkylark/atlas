@@ -31,7 +31,7 @@ watch(() => props.message, (newVal) => {
   >
     <div
       v-if="visible && message"
-      class="fixed bottom-8 left-6 right-6 p-4 rounded-xl border shadow-2xl z-50 flex items-center gap-3 backdrop-blur-md"
+      class="fixed bottom-8 left-6 right-6 p-4 rounded-xl border shadow-2xl z-50 flex items-center gap-3 backdrop-blur-md overflow-hidden"
       :class="
         message.type === 'success'
           ? 'bg-bg1/90 border-green text-green'
@@ -41,6 +41,21 @@ watch(() => props.message, (newVal) => {
       <CheckCircle v-if="message.type === 'success'" :size="20" />
       <AlertCircle v-else :size="20" />
       <span class="text-sm font-bold tracking-tight">{{ message.text }}</span>
+      
+      <!-- Progress Bar -->
+      <div 
+        class="absolute bottom-0 left-0 h-1 bg-current opacity-40 animate-deplete"
+      ></div>
     </div>
   </Transition>
 </template>
+
+<style scoped>
+@keyframes deplete {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+.animate-deplete {
+  animation: deplete 3s linear forwards;
+}
+</style>

@@ -22,8 +22,12 @@ function notify(msg: { type: "success" | "error"; text: string }) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-bg0 text-fg font-mono p-6">
-    <div class="max-w-2xl mx-auto">
+  <div class="h-screen overflow-hidden bg-bg0 text-fg font-mono antialiased
+              pt-[calc(1rem+env(safe-area-inset-top))] 
+              pb-[env(safe-area-inset-bottom)]
+              pl-[env(safe-area-inset-left)] 
+              pr-[env(safe-area-inset-right)]">
+    <div class="max-w-2xl mx-auto h-full overflow-y-auto px-6">
       <Transition
         name="fade"
         mode="out-in"

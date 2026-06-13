@@ -43,12 +43,12 @@ async function copyContent(content: string) {
           </button>
         </div>
 
-        <div class="p-4 overflow-x-auto">
-          <div v-if="file.file_type === 'code'" v-html="file.content" class="text-sm font-mono leading-relaxed whitespace-pre"></div>
+        <div class="p-4">
+          <div v-if="file.file_type === 'code'" v-html="file.content" class="text-sm font-mono leading-relaxed whitespace-pre-wrap break-all"></div>
           <div v-else-if="file.file_type === 'plain'" class="max-h-[70vh] overflow-y-auto custom-scrollbar">
-            <pre class="text-sm text-fg leading-relaxed font-mono whitespace-pre-wrap">{{ file.content }}</pre>
+            <pre class="text-sm text-fg leading-relaxed font-mono whitespace-pre-wrap break-words max-w-full overflow-x-hidden">{{ file.content }}</pre>
           </div>
-          <div v-else-if="file.file_type === 'html'" v-html="file.content" class="bg-white text-black p-2 rounded min-h-[200px]"></div>
+          <div v-else-if="file.file_type === 'html'" v-html="file.content" class="bg-white text-black p-2 rounded min-h-[200px] max-w-full overflow-x-hidden"></div>
         </div>
       </div>
 
