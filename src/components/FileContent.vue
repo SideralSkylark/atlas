@@ -13,16 +13,6 @@ const emit = defineEmits<{
 
 <template>
   <div class="space-y-4">
-    <div class="flex justify-end">
-      <button
-        @click="emit('edit')"
-        class="flex items-center gap-2 px-3 py-1.5 bg-bg1 border border-border rounded-lg text-xs font-bold text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 transition-all cursor-pointer"
-      >
-        <Edit2 :size="14" />
-        <span>Edit File</span>
-      </button>
-    </div>
-
     <div class="bg-bg1 border border-border rounded-xl overflow-hidden shadow-sm">
       <!-- Code / Plain / HTML -->
       <div v-if="file.file_type === 'code' || file.file_type === 'plain' || file.file_type === 'html'" class="p-4 overflow-x-auto">

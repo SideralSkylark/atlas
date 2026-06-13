@@ -9,7 +9,8 @@ import {
   Loader2,
   Home,
   Search,
-  GitBranch
+  GitBranch,
+  Edit2
 } from "@lucide/vue";
 import { onMounted, watch, computed, ref } from "vue";
 import { useFileSystem } from "../composables/useFileSystem";
@@ -152,76 +153,117 @@ function handleEdit() {
     />
 
     <!-- Header -->
-    <div class="flex items-center justify-between mb-6 gap-4">
-      <div class="flex items-center gap-2">
-        <button
-          @click="handleBack"
-          class="shrink-0 p-2 border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 transition-all cursor-pointer"
-          aria-label="Back"
-        >
-          <ChevronLeft :size="20" />
-        </button>
-
-        <div class="flex bg-bg1 border border-border rounded-lg p-0.5">
+    <div class="sticky top-0 z-20 bg-bg0 pb-4 pt-1">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex items-center gap-2">
           <button
-            @click="view = 'files'"
-            class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer"
-            :class="view === 'files' ? 'bg-bg3 text-fg shadow-sm' : 'text-fg-dim hover:text-fg'"
+            @click="handleBack"
+            class="shrink-0 p-2 border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 transition-all cursor-pointer bg-bg1"
+            aria-label="Back"
           >
-            Files
+            <ChevronLeft :size="20" />
           </button>
-          <button
-            @click="view = 'git'"
-            class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer"
-            :class="view === 'git' ? 'bg-bg3 text-fg shadow-sm' : 'text-fg-dim hover:text-fg'"
-          >
-            Git
-          </button>
-        </div>
-      </div>
 
-      <div v-if="view === 'files'" class="flex-1 overflow-x-auto no-scrollbar py-1">
-        <div class="flex items-center gap-1.5 whitespace-nowrap text-sm font-medium">
-          <template v-for="(crumb, i) in breadcrumbs" :key="crumb.path">
+          <button
+            v-if="view === 'files' && renderedFile"
+            @click="handleEdit"
+            class="shrink-0 p-2 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 transition-all cursor-pointer bg-bg1"
+            title="Edit File"
+          >
+            <Edit2 :size="20" />
+          </button>
+
+          <div class="flex bg-bg1 border border-border rounded-lg p-0.5 shadow-sm">
             <button
-              @click="navigateToBreadcrumb(i)"
-              class="text-fg-dim hover:text-yellow transition-colors cursor-pointer"
-              :class="{ 'text-fg font-bold': i === breadcrumbs.length - 1 && renderedFile === null }"
+              @click="view = 'files'"
+              class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer"
+              :class="view === 'files' ? 'bg-bg3 text-fg shadow-sm' : 'text-fg-dim hover:text-fg'"
             >
-              {{ crumb.name }}
+              Files
             </button>
-            <ChevronRight v-if="i < breadcrumbs.length - 1" :size="14" class="text-border" />
-          </template>
+            <button
+              @click="view = 'git'"
+              class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer"
+              :class="view === 'git' ? 'bg-bg3 text-fg shadow-sm' : 'text-fg-dim hover:text-fg'"
+            >
+              Git
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div v-if="view === 'files' && !renderedFile && !currentRelativePath" class="flex gap-2 shrink-0">
-        <button
-          @click="showSearch = !showSearch"
-          class="p-2 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 transition-all cursor-pointer"
-          :class="{ 'bg-bg3 border-yellow text-yellow': showSearch }"
-          title="Search Files"
-        >
-          <Search :size="20" />
-        </button>
-        <button
-          @click="onPull"
-          :disabled="syncing === repo.id"
-          class="p-2 border border-border rounded-lg text-fg-dim hover:text-green hover:border-green active:scale-95 transition-all disabled:opacity-30 cursor-pointer"
-          title="Pull Changes"
-        >
-          <Loader2 v-if="syncing === repo.id" :size="20" class="animate-spin" />
-          <Download v-else :size="20" />
-        </button>
-        <button
-          @click="onPush"
-          :disabled="syncing === repo.id"
-          class="p-2 border border-border rounded-lg text-fg-dim hover:text-aqua hover:border-aqua active:scale-95 transition-all disabled:opacity-30 cursor-pointer"
-          title="Push Changes"
-        >
-          <Loader2 v-if="syncing === repo.id" :size="20" class="animate-spin" />
-          <Upload v-else :size="20" />
-        </button>
+        <div v-if="view === 'files'" class="flex-1 flex items-center justify-end overflow-hidden">
+          <div v-if="renderedFile" class="flex items-center gap-2 overflow-hidden">
+            <span class="text-sm font-bold text-fg truncate">{{ renderedFile.name }}</span>
+            <span class="px-2 py-0.5 bg-bg3 text-aqua text-[10px] font-bold uppercase tracking-wider rounded border border-border/50 shrink-0">
+              {{ renderedFile.file_type }}
+            </span>
+          </div>
+
+          <div v-else class="flex items-center gap-3 overflow-hidden">
+            <div class="flex items-center gap-1 flex-wrap justify-end text-sm font-medium">
+              <template v-if="breadcrumbs.length > 2">
+                <button
+                  @click="navigateToBreadcrumb(0)"
+                  class="text-fg-dim hover:text-yellow transition-colors cursor-pointer"
+                >
+                  ...
+                </button>
+                <ChevronRight :size="14" class="text-border" />
+                <template v-for="(crumb, i) in breadcrumbs.slice(-2)" :key="crumb.path">
+                  <button
+                    @click="navigateToBreadcrumb(breadcrumbs.length - 2 + i)"
+                    class="text-fg-dim hover:text-yellow transition-colors cursor-pointer"
+                    :class="{ 'text-fg font-bold': i === 1 }"
+                  >
+                    {{ crumb.name }}
+                  </button>
+                  <ChevronRight v-if="i === 0" :size="14" class="text-border" />
+                </template>
+              </template>
+              <template v-else>
+                <template v-for="(crumb, i) in breadcrumbs" :key="crumb.path">
+                  <button
+                    @click="navigateToBreadcrumb(i)"
+                    class="text-fg-dim hover:text-yellow transition-colors cursor-pointer"
+                    :class="{ 'text-fg font-bold': i === breadcrumbs.length - 1 }"
+                  >
+                    {{ crumb.name }}
+                  </button>
+                  <ChevronRight v-if="i < breadcrumbs.length - 1" :size="14" class="text-border" />
+                </template>
+              </template>
+            </div>
+
+            <div class="flex gap-1.5 shrink-0">
+              <button
+                @click="showSearch = !showSearch"
+                class="p-2 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 transition-all cursor-pointer bg-bg1"
+                :class="{ 'bg-bg3 border-yellow text-yellow': showSearch }"
+                title="Search Files"
+              >
+                <Search :size="18" />
+              </button>
+              <button
+                @click="onPull"
+                :disabled="syncing === repo.id"
+                class="p-2 border border-border rounded-lg text-fg-dim hover:text-green hover:border-green active:scale-95 transition-all disabled:opacity-30 cursor-pointer bg-bg1"
+                title="Pull Changes"
+              >
+                <Loader2 v-if="syncing === repo.id" :size="18" class="animate-spin" />
+                <Download v-else :size="18" />
+              </button>
+              <button
+                @click="onPush"
+                :disabled="syncing === repo.id"
+                class="p-2 border border-border rounded-lg text-fg-dim hover:text-aqua hover:border-aqua active:scale-95 transition-all disabled:opacity-30 cursor-pointer bg-bg1"
+                title="Push Changes"
+              >
+                <Loader2 v-if="syncing === repo.id" :size="18" class="animate-spin" />
+                <Upload v-else :size="18" />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
