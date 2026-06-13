@@ -1,24 +1,55 @@
 <script setup lang="ts">
-import { Edit2 } from "@lucide/vue";
+import { ref } from "vue";
+import { Clipboard, ClipboardCheck } from "@lucide/vue";
 import type { RenderedFile } from "../composables/useFileSystem";
 
 defineProps<{
   file: RenderedFile;
 }>();
 
-const emit = defineEmits<{
-  (e: "edit"): void;
-}>();
+const copied = ref(false);
+
+async function copyContent(content: string) {
+  // Strip HTML tags if it's code (syntect output)
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = content;
+  const textToCopy = tempDiv.textContent || tempDiv.innerText || "";
+  
+  try {
+    await navigator.clipboard.writeText(textToCopy);
+    copied.value = true;
+    setTimeout(() => {
+      copied.value = false;
+    }, 1500);
+  } catch (err) {
+    console.error("Failed to copy: ", err);
+  }
+}
 </script>
 
 <template>
   <div class="space-y-4">
     <div class="bg-bg1 border border-border rounded-xl overflow-hidden shadow-sm">
       <!-- Code / Plain / HTML -->
-      <div v-if="file.file_type === 'code' || file.file_type === 'plain' || file.file_type === 'html'" class="p-4 overflow-x-auto">
-        <div v-if="file.file_type === 'code'" v-html="file.content" class="text-sm font-mono leading-relaxed whitespace-pre"></div>
-        <pre v-else-if="file.file_type === 'plain'" class="text-sm text-fg leading-relaxed font-mono whitespace-pre-wrap">{{ file.content }}</pre>
-        <div v-else-if="file.file_type === 'html'" v-html="file.content" class="bg-white text-black p-2 rounded min-h-[200px]"></div>
+      <div v-if="file.file_type === 'code' || file.file_type === 'plain' || file.file_type === 'html'" class="relative">
+        <div v-if="file.file_type === 'code'" class="absolute right-4 top-4 z-10">
+          <button
+            @click="copyContent(file.content)"
+            class="p-2 bg-bg0/50 backdrop-blur-md border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim transition-all active:scale-95 cursor-pointer shadow-lg"
+            :title="copied ? 'Copied!' : 'Copy to clipboard'"
+          >
+            <ClipboardCheck v-if="copied" :size="16" class="text-green" />
+            <Clipboard v-else :size="16" />
+          </button>
+        </div>
+
+        <div class="p-4 overflow-x-auto">
+          <div v-if="file.file_type === 'code'" v-html="file.content" class="text-sm font-mono leading-relaxed whitespace-pre"></div>
+          <div v-else-if="file.file_type === 'plain'" class="max-h-[70vh] overflow-y-auto custom-scrollbar">
+            <pre class="text-sm text-fg leading-relaxed font-mono whitespace-pre-wrap">{{ file.content }}</pre>
+          </div>
+          <div v-else-if="file.file_type === 'html'" v-html="file.content" class="bg-white text-black p-2 rounded min-h-[200px]"></div>
+        </div>
       </div>
 
       <!-- Markdown -->
@@ -50,5 +81,19 @@ const emit = defineEmits<{
 /* Syntect styles fix */
 .syntect-highlight {
   font-family: inherit;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-bg3);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border);
 }
 </style>

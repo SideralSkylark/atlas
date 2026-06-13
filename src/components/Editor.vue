@@ -25,7 +25,7 @@ const emit = defineEmits<{
 }>();
 
 const { readRawFile, saveFile, loading: fsLoading } = useFileSystem();
-const { commitChanges, loading: gitLoading } = useGit();
+const { commitChanges, stageFile, loading: gitLoading } = useGit();
 const { pushRepo, syncing: pushLoading } = useRepos();
 
 const content = ref("");
@@ -34,6 +34,12 @@ const commitMessage = ref("");
 const showCommitDialog = ref(false);
 const shouldPushAfterCommit = ref(false);
 const error = ref<string | null>(null);
+
+const stats = computed(() => {
+  const lines = content.value ? content.value.split("\n").length : 0;
+  const words = content.value ? content.value.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
+  return `${lines} lines · ${words} words`;
+});
 
 async function loadContent() {
   const data = await readRawFile(props.repo.id, props.relativePath);
@@ -61,14 +67,13 @@ async function onCommit() {
   if (!saved) return;
 
   // 2. Stage and commit
-  // We need to stage it. In our current useGit, commitChanges doesn't stage everything.
-  // Actually, commitChanges in Rust backend uses index.write_tree().
-  // We should stage the file first.
-  const { stageFile } = useGit(); // Get a fresh one or refactor
   await stageFile(props.repo.id, props.relativePath);
   
+  const name = localStorage.getItem("atlas_author_name") || "Atlas User";
+  const email = localStorage.getItem("atlas_author_email") || "user@atlas.app";
+
   try {
-    await commitChanges(props.repo.id, commitMessage.value, "Atlas User", "user@atlas.app");
+    await commitChanges(props.repo.id, commitMessage.value, name, email);
     emit("notify", { type: "success", text: "Changes committed." });
     showCommitDialog.value = false;
     commitMessage.value = "";
@@ -178,9 +183,15 @@ onMounted(loadContent);
     </Transition>
 
     <!-- Unsaved Changes Warning -->
-    <div v-if="hasChanges" class="mt-4 flex items-center gap-2 text-[10px] text-orange animate-pulse">
-      <AlertCircle :size="12" />
-      <span>Unsaved changes</span>
+    <div class="mt-4 flex items-center justify-between">
+      <div v-if="hasChanges" class="flex items-center gap-2 text-[10px] text-orange animate-pulse font-bold uppercase tracking-wider">
+        <AlertCircle :size="12" />
+        <span>Unsaved changes</span>
+      </div>
+      <div v-else></div>
+      <div class="text-[10px] text-fg-dim font-mono bg-bg1 px-2 py-0.5 rounded border border-border/50">
+        {{ stats }}
+      </div>
     </div>
   </div>
 </template>
