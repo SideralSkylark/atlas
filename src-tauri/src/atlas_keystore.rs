@@ -29,7 +29,7 @@ struct GetSecretResponse {
 
 #[cfg(target_os = "android")]
 #[derive(Deserialize)]
-struct ListSecretsResponse {
+pub struct ListSecretsResponse {
     secrets: Vec<String>,
 }
 
