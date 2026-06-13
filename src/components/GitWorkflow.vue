@@ -9,7 +9,9 @@ import {
   ArrowLeftRight,
   Loader2,
   FileCode,
-  GitCommit
+  GitCommit,
+  ChevronRight,
+  ChevronDown
 } from "@lucide/vue";
 import { useGit } from "../composables/useGit";
 import type { RepoInfo } from "../composables/useRepos";
@@ -41,22 +43,47 @@ const newBranchName = ref("");
 const showCreateBranch = ref(false);
 const commitMessage = ref("");
 const selectedFileForDiff = ref<string | null>(null);
+const showAuthor = ref(false);
+
+const authorName = ref(localStorage.getItem("atlas_author_name") || "Atlas User");
+const authorEmail = ref(localStorage.getItem("atlas_author_email") || "user@atlas.app");
 
 async function onCreateBranch() {
   if (!newBranchName.value) return;
   await createBranch(props.repo.id, newBranchName.value);
   newBranchName.value = "";
   showCreateBranch.value = false;
+  await loadBranches(props.repo.id);
 }
 
 async function onSwitchBranch(name: string) {
   await switchBranch(props.repo.id, name);
+  await Promise.all([
+    loadBranches(props.repo.id),
+    loadStatus(props.repo.id),
+    loadHistory(props.repo.id)
+  ]);
 }
 
 async function onCommit() {
   if (!commitMessage.value) return;
-  await commitChanges(props.repo.id, commitMessage.value, "Atlas User", "user@atlas.app");
+  
+  localStorage.setItem("atlas_author_name", authorName.value);
+  localStorage.setItem("atlas_author_email", authorEmail.value);
+
+  await commitChanges(props.repo.id, commitMessage.value, authorName.value, authorEmail.value);
   commitMessage.value = "";
+  await Promise.all([
+    loadStatus(props.repo.id),
+    loadHistory(props.repo.id)
+  ]);
+}
+
+async function onStageAll() {
+  const unstaged = status.value.filter(s => !s.staged);
+  for (const entry of unstaged) {
+    await stageFile(props.repo.id, entry.path);
+  }
 }
 
 async function viewDiff(path: string, staged: boolean) {
@@ -147,7 +174,11 @@ onMounted(() => {
 
     <!-- History Tab -->
     <div v-if="activeTab === 'history'" class="space-y-4">
-      <div class="space-y-3">
+      <div v-if="history.length === 0" class="flex flex-col items-center justify-center py-20 text-fg-dim opacity-30">
+        <GitCommit :size="40" class="mb-3" />
+        <p class="text-sm font-medium">No commits yet</p>
+      </div>
+      <div v-else class="space-y-3">
         <div
           v-for="commit in history"
           :key="commit.hash"
@@ -168,42 +199,77 @@ onMounted(() => {
     <!-- Changes Tab -->
     <div v-if="activeTab === 'changes'" class="space-y-6">
       <!-- Commit Form -->
-      <div class="space-y-3 p-4 bg-bg1 border border-border rounded-lg">
+      <div class="space-y-3 p-4 bg-bg1 border border-border rounded-lg shadow-sm">
+        <div class="space-y-2">
+          <button 
+            @click="showAuthor = !showAuthor"
+            class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-fg-dim hover:text-fg transition-colors cursor-pointer"
+          >
+            <ChevronRight :size="12" class="transition-transform" :class="{ 'rotate-90': showAuthor }" />
+            Author Info
+          </button>
+          
+          <Transition name="slide">
+            <div v-if="showAuthor" class="grid grid-cols-2 gap-2 pb-2">
+              <input 
+                v-model="authorName" 
+                placeholder="Name" 
+                class="px-2.5 py-1.5 bg-bg0 border border-border rounded text-[11px] outline-none focus:border-yellow"
+              />
+              <input 
+                v-model="authorEmail" 
+                placeholder="Email" 
+                class="px-2.5 py-1.5 bg-bg0 border border-border rounded text-[11px] outline-none focus:border-yellow"
+              />
+            </div>
+          </Transition>
+        </div>
+
         <textarea
           v-model="commitMessage"
           placeholder="Commit message..."
-          class="w-full h-20 p-3 bg-bg0 border border-border rounded-lg outline-none focus:border-green text-sm resize-none"
+          class="w-full h-20 p-3 bg-bg0 border border-border rounded-lg outline-none focus:border-green text-sm resize-none shadow-inner"
         ></textarea>
-        <button
-          @click="onCommit"
-          :disabled="!commitMessage || status.filter(s => s.staged).length === 0"
-          class="w-full py-2.5 bg-green text-bg0 rounded-lg text-sm font-bold active:scale-[0.98] transition-all disabled:opacity-30 disabled:scale-100 cursor-pointer"
-        >
-          Commit Changes ({{ status.filter(s => s.staged).length }})
-        </button>
+        
+        <div class="flex gap-2">
+          <button
+            v-if="status.filter(s => !s.staged).length > 0"
+            @click="onStageAll"
+            class="px-4 py-2.5 bg-bg3 text-fg border border-border rounded-lg text-xs font-bold active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap"
+          >
+            Stage All ({{ status.filter(s => !s.staged).length }})
+          </button>
+          <button
+            @click="onCommit"
+            :disabled="!commitMessage || status.filter(s => s.staged).length === 0"
+            class="flex-1 py-2.5 bg-green text-bg0 rounded-lg text-sm font-bold active:scale-[0.98] transition-all disabled:opacity-30 disabled:scale-100 cursor-pointer shadow-md"
+          >
+            Commit ({{ status.filter(s => s.staged).length }})
+          </button>
+        </div>
       </div>
 
       <!-- Status List -->
       <div class="space-y-4">
         <div v-if="status.length === 0" class="flex flex-col items-center justify-center py-10 text-fg-dim opacity-30">
           <Check :size="40" class="mb-2" />
-          <p class="text-sm">No changes to commit</p>
+          <p class="text-sm font-medium">No changes to commit</p>
         </div>
 
         <div v-else class="space-y-2">
           <div
             v-for="entry in status"
             :key="entry.path"
-            class="flex items-center justify-between p-3 bg-bg1 border border-border rounded-lg"
-            :class="{ 'border-green/50': entry.staged }"
+            class="flex items-center justify-between p-3 bg-bg1 border border-border rounded-xl shadow-sm"
+            :class="{ 'border-green/30 bg-bg1/80': entry.staged }"
           >
             <div class="flex items-center gap-3 min-w-0 cursor-pointer" @click="viewDiff(entry.path, entry.staged)">
-              <div :class="entry.staged ? 'text-green' : 'text-orange'">
+              <div :class="entry.staged ? 'text-green' : 'text-fg-dim'">
                 <FileCode :size="18" />
               </div>
               <div class="flex flex-col min-w-0">
-                <span class="text-sm font-medium truncate">{{ entry.path }}</span>
-                <span class="text-[10px] uppercase opacity-60">{{ entry.status }}</span>
+                <span class="text-sm font-bold truncate text-fg">{{ entry.path }}</span>
+                <span class="text-[9px] font-bold uppercase tracking-wider opacity-60">{{ entry.status }}</span>
               </div>
             </div>
             
@@ -211,7 +277,7 @@ onMounted(() => {
               <button
                 @click="entry.staged ? unstageFile(props.repo.id, entry.path) : stageFile(props.repo.id, entry.path)"
                 class="p-2 rounded-lg transition-colors cursor-pointer"
-                :class="entry.staged ? 'text-orange hover:bg-orange/10' : 'text-green hover:bg-green/10'"
+                :class="entry.staged ? 'text-fg-dim hover:bg-bg3' : 'text-green hover:bg-green/10'"
                 :title="entry.staged ? 'Unstage' : 'Stage'"
               >
                 <X v-if="entry.staged" :size="18" />
@@ -222,24 +288,36 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Diff Viewer (Modal) -->
-      <Transition name="fade">
-        <div v-if="selectedFileForDiff" class="fixed inset-0 z-50 bg-bg0 p-6 flex flex-col">
-          <div class="flex items-center justify-between mb-4">
-            <h4 class="font-bold text-sm truncate pr-4">{{ selectedFileForDiff }}</h4>
-            <button @click="selectedFileForDiff = null" class="p-2 border border-border rounded-lg cursor-pointer">
-              <X :size="20" />
-            </button>
-          </div>
-          <div class="flex-1 overflow-auto bg-bg1 rounded-lg border border-border">
-            <pre class="p-4 text-[11px] font-mono whitespace-pre text-fg-dim">
+      <!-- Diff Bottom Sheet -->
+      <Teleport to="body">
+        <Transition name="fade">
+          <div v-if="selectedFileForDiff" 
+               class="fixed inset-0 bg-bg0/80 backdrop-blur-sm z-40"
+               @click="selectedFileForDiff = null"></div>
+        </Transition>
+        <Transition name="slide-up">
+          <div v-if="selectedFileForDiff" 
+               class="fixed bottom-0 left-0 right-0 h-[85vh] bg-bg1 border-t border-border rounded-t-3xl flex flex-col z-50 shadow-2xl overflow-hidden">
+            <div class="w-12 h-1.5 bg-bg3 rounded-full mx-auto my-4 shrink-0" @click="selectedFileForDiff = null"></div>
+            
+            <div class="px-6 pb-4 flex items-center justify-between gap-4 border-b border-border/50">
+              <div class="flex flex-col min-w-0">
+                <h4 class="font-bold text-fg truncate text-sm">{{ selectedFileForDiff }}</h4>
+                <span class="text-[10px] text-fg-dim uppercase tracking-widest font-bold">File Difference</span>
+              </div>
+              <button @click="selectedFileForDiff = null" class="p-2 hover:bg-bg3 rounded-full transition-colors">
+                <X :size="24" />
+              </button>
+            </div>
+            
+            <div class="flex-1 overflow-auto bg-bg0 font-mono text-[11px] leading-relaxed p-4">
               <template v-for="(line, i) in diff.split('\n')" :key="i">
-                <div :class="{ 'bg-green/10 text-green': line.startsWith('+'), 'bg-red/10 text-red': line.startsWith('-') }">{{ line }}</div>
+                <div :class="{ 'bg-green/10 text-green': line.startsWith('+'), 'bg-red/10 text-red': line.startsWith('-') }" class="px-2 py-0.5 whitespace-pre">{{ line }}</div>
               </template>
-            </pre>
+            </div>
           </div>
-        </div>
-      </Transition>
+        </Transition>
+      </Teleport>
     </div>
 
     <!-- Loading Overlay -->
@@ -252,11 +330,36 @@ onMounted(() => {
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.3s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(100%);
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: all 0.3s ease;
+  max-height: 100px;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-10px);
+  margin-bottom: 0;
+  overflow: hidden;
 }
 </style>
