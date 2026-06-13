@@ -100,7 +100,7 @@ onMounted(loadContent);
       <div class="flex items-center gap-3 min-w-0">
         <button
           @click="emit('close')"
-          class="p-2 border border-border rounded-lg text-fg-dim hover:text-fg active:scale-95 transition-all cursor-pointer"
+          class="min-w-[44px] min-h-[44px] flex items-center justify-center border border-border rounded-lg text-fg-dim hover:text-fg active:scale-95 duration-100 transition-all cursor-pointer"
         >
           <X :size="20" />
         </button>
@@ -114,7 +114,7 @@ onMounted(loadContent);
         <button
           @click="onSave"
           :disabled="!hasChanges || fsLoading"
-          class="p-2 border border-border rounded-lg text-fg-dim hover:text-green hover:border-green active:scale-95 transition-all disabled:opacity-30 cursor-pointer"
+          class="min-w-[44px] min-h-[44px] flex items-center justify-center border border-border rounded-lg text-fg-dim hover:text-green hover:border-green active:scale-95 duration-100 transition-all disabled:opacity-30 cursor-pointer"
           title="Save"
         >
           <Loader2 v-if="fsLoading" :size="20" class="animate-spin" />
@@ -123,7 +123,7 @@ onMounted(loadContent);
         <button
           @click="showCommitDialog = true"
           :disabled="fsLoading || gitLoading"
-          class="p-2 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 transition-all disabled:opacity-30 cursor-pointer"
+          class="min-w-[44px] min-h-[44px] flex items-center justify-center border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 duration-100 transition-all disabled:opacity-30 cursor-pointer"
           title="Commit Changes"
         >
           <GitCommit :size="20" />
@@ -146,7 +146,7 @@ onMounted(loadContent);
         <div class="w-full max-w-sm bg-bg1 border border-border rounded-2xl p-6 shadow-lg space-y-4" style="box-shadow: var(--shadow-lg)">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-bold font-sans">Commit Changes</h3>
-            <button @click="showCommitDialog = false" class="text-fg-dim hover:text-fg font-sans"><X :size="20" /></button>
+            <button @click="showCommitDialog = false" class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-fg font-sans active:scale-95 duration-100 transition-all"><X :size="20" /></button>
           </div>
           
           <div class="space-y-3">
@@ -170,7 +170,7 @@ onMounted(loadContent);
           <button
             @click="onCommit"
             :disabled="!commitMessage || gitLoading"
-            class="w-full py-3 bg-yellow text-bg0 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-30 font-sans"
+            class="w-full py-4 bg-yellow text-bg0 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 duration-100 transition-all disabled:opacity-30 font-sans"
           >
             <Loader2 v-if="gitLoading || pushLoading === repo.id" :size="20" class="animate-spin" />
             <template v-else>

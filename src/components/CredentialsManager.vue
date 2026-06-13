@@ -45,7 +45,7 @@ onMounted(loadPats);
       </div>
       <button
         @click="onSave"
-        class="w-full py-3 mt-2 bg-green text-bg0 font-bold rounded-lg active:scale-[0.98] hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer font-sans"
+        class="w-full py-4 mt-2 bg-green text-bg0 font-bold rounded-lg active:scale-95 duration-100 hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer font-sans"
       >
         <Save :size="18" />
         <span class="font-sans">Save Token</span>
@@ -68,7 +68,7 @@ onMounted(loadPats);
         </div>
         <button
           @click="deletePat(d as string)"
-          class="p-1.5 text-red/60 hover:text-red hover:bg-red/10 rounded-md transition-all cursor-pointer"
+          class="min-w-[44px] min-h-[44px] flex items-center justify-center text-red/60 hover:text-red hover:bg-red/10 rounded-md transition-all active:scale-95 duration-100 cursor-pointer"
         >
           <Trash2 :size="16" />
         </button>

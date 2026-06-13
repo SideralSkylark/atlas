@@ -73,6 +73,7 @@ async function onCommit() {
 
   await commitChanges(props.repo.id, commitMessage.value, authorName.value, authorEmail.value);
   commitMessage.value = "";
+  if ('vibrate' in navigator) navigator.vibrate(20);
   await Promise.all([
     loadStatus(props.repo.id),
     loadHistory(props.repo.id)
@@ -125,7 +126,7 @@ onMounted(() => {
         <h3 class="text-lg font-bold font-sans">Branches</h3>
         <button
           @click="showCreateBranch = !showCreateBranch"
-          class="p-2 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 transition-all cursor-pointer"
+          class="min-w-[44px] min-h-[44px] flex items-center justify-center border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 duration-100 transition-all cursor-pointer"
         >
           <Plus :size="20" />
         </button>
@@ -163,7 +164,7 @@ onMounted(() => {
           <button
             v-if="!branch.is_current"
             @click="onSwitchBranch(branch.name)"
-            class="p-1.5 text-fg-dim hover:text-fg active:scale-95 transition-all cursor-pointer"
+            class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-fg active:scale-95 duration-100 transition-all cursor-pointer"
             title="Switch to branch"
           >
             <ArrowLeftRight :size="16" />
@@ -205,7 +206,7 @@ onMounted(() => {
         <div class="space-y-2">
           <button 
             @click="showAuthor = !showAuthor"
-            class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-fg-dim hover:text-fg transition-colors cursor-pointer font-sans"
+            class="min-h-[44px] flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-fg-dim hover:text-fg transition-colors cursor-pointer font-sans"
           >
             <ChevronRight :size="12" class="transition-transform" :class="{ 'rotate-90': showAuthor }" />
             Author Info
@@ -237,14 +238,14 @@ onMounted(() => {
           <button
             v-if="status.filter(s => !s.staged).length > 0"
             @click="onStageAll"
-            class="px-4 py-2.5 bg-bg3 text-fg border border-border rounded-lg text-xs font-bold active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap font-sans"
+            class="px-4 py-2.5 bg-bg3 text-fg border border-border rounded-lg text-xs font-bold active:scale-95 duration-100 transition-all cursor-pointer whitespace-nowrap font-sans"
           >
             Stage All ({{ status.filter(s => !s.staged).length }})
           </button>
           <button
             @click="onCommit"
             :disabled="!commitMessage || status.filter(s => s.staged).length === 0"
-            class="flex-1 py-2.5 bg-green text-bg0 rounded-lg text-sm font-bold active:scale-[0.98] transition-all disabled:opacity-30 disabled:scale-100 cursor-pointer shadow-md font-sans"
+            class="flex-1 py-2.5 bg-green text-bg0 rounded-lg text-sm font-bold active:scale-95 duration-100 transition-all disabled:opacity-30 disabled:scale-100 cursor-pointer shadow-md font-sans"
           >
             Commit ({{ status.filter(s => s.staged).length }})
           </button>
@@ -286,7 +287,7 @@ onMounted(() => {
             <div class="flex items-center gap-1">
               <button
                 @click="entry.staged ? unstageFile(props.repo.id, entry.path) : stageFile(props.repo.id, entry.path)"
-                class="p-2 rounded-lg transition-colors cursor-pointer"
+                class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors cursor-pointer active:scale-95 duration-100"
                 :class="entry.staged ? 'text-fg-dim hover:bg-bg3' : 'text-green hover:bg-green/10'"
                 :title="entry.staged ? 'Unstage' : 'Stage'"
               >
@@ -316,7 +317,7 @@ onMounted(() => {
                 <h4 class="font-bold text-fg truncate text-sm font-mono">{{ selectedFileForDiff }}</h4>
                 <span class="text-[10px] text-fg-dim uppercase tracking-widest font-bold font-sans">File Difference</span>
               </div>
-              <button @click="selectedFileForDiff = null" class="p-2 hover:bg-bg3 rounded-full transition-colors font-sans">
+              <button @click="selectedFileForDiff = null" class="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-bg3 rounded-full transition-all active:scale-95 duration-100">
                 <X :size="24" />
               </button>
             </div>

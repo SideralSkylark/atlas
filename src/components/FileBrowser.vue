@@ -10,7 +10,8 @@ import {
   Home,
   Search,
   GitBranch,
-  Edit2
+  Edit2,
+  RefreshCcw
 } from "@lucide/vue";
 import { onMounted, watch, computed, ref } from "vue";
 import { useFileSystem } from "../composables/useFileSystem";
@@ -50,6 +51,17 @@ const view = ref<"files" | "git">("files");
 const showSearch = ref(false);
 const searchQuery = ref("");
 const editingPath = ref<string | null>(null);
+
+// Gestures State
+const touchStartX = ref(0);
+const touchStartY = ref(0);
+const touchCurrentX = ref(0);
+const touchCurrentY = ref(0);
+const isSwiping = ref(false);
+const isPulling = ref(false);
+const pullDelta = ref(0);
+const swipeDelta = ref(0);
+const containerRef = ref<HTMLElement | null>(null);
 
 const breadcrumbs = computed(() => {
   const parts = currentRelativePath.value ? currentRelativePath.value.split("/") : [];
@@ -124,6 +136,55 @@ async function handleSearchEntry(entry: { relative_path: string; is_dir: boolean
   await openPath(props.repo.id, entry.relative_path, entry.is_dir);
 }
 
+// Gesture Handlers
+function onTouchStart(e: TouchEvent) {
+  touchStartX.value = e.touches[0].clientX;
+  touchStartY.value = e.touches[0].clientY;
+  touchCurrentX.value = touchStartX.value;
+  touchCurrentY.value = touchStartY.value;
+  isSwiping.value = false;
+  isPulling.value = false;
+  swipeDelta.value = 0;
+  pullDelta.value = 0;
+}
+
+function onTouchMove(e: TouchEvent) {
+  touchCurrentX.value = e.touches[0].clientX;
+  touchCurrentY.value = e.touches[0].clientY;
+  
+  const deltaX = touchCurrentX.value - touchStartX.value;
+  const deltaY = touchCurrentY.value - touchStartY.value;
+
+  // Swipe back detection
+  if (deltaX > 20 && Math.abs(deltaY) < 30 && view.value === 'files' && !showSearch.value) {
+    isSwiping.value = true;
+    swipeDelta.value = deltaX;
+  }
+
+  // Pull to refresh detection
+  if (deltaY > 20 && Math.abs(deltaX) < 30 && containerRef.value?.scrollTop === 0 && view.value === 'files' && !renderedFile.value && !showSearch.value) {
+    isPulling.value = true;
+    pullDelta.value = deltaY;
+    e.preventDefault(); // Prevent native scroll
+  }
+}
+
+async function onTouchEnd() {
+  if (isSwiping.value && swipeDelta.value > 100) {
+    handleBack();
+  }
+  
+  if (isPulling.value && pullDelta.value > 80) {
+    await loadFiles(props.repo.id);
+    if ('vibrate' in navigator) navigator.vibrate(20);
+  }
+
+  isSwiping.value = false;
+  isPulling.value = false;
+  swipeDelta.value = 0;
+  pullDelta.value = 0;
+}
+
 let searchTimeout: number | null = null;
 watch(searchQuery, (newVal) => {
   if (searchTimeout) clearTimeout(searchTimeout);
@@ -142,7 +203,13 @@ function handleEdit() {
 </script>
 
 <template>
-  <div>
+  <div 
+    ref="containerRef"
+    class="h-full flex flex-col"
+    @touchstart="onTouchStart"
+    @touchmove="onTouchMove"
+    @touchend="onTouchEnd"
+  >
     <!-- Editor Overlay -->
     <Editor 
       v-if="editingPath" 
@@ -153,14 +220,28 @@ function handleEdit() {
     />
 
     <!-- Header -->
-    <div class="sticky top-0 z-20 bg-bg1 pb-4 pt-1 space-y-3 shadow-md -mx-6 px-6" style="box-shadow: var(--shadow-md), var(--shadow-inset)">
+    <div 
+      class="sticky top-0 z-20 bg-bg0 pb-4 pt-1 space-y-3 shadow-md -mx-6 px-6" 
+      style="box-shadow: var(--shadow-md), var(--shadow-inset)"
+    >
+      <!-- Pull to refresh indicator -->
+      <div 
+        v-if="isPulling" 
+        class="absolute top-0 left-0 right-0 flex justify-center pt-2 pointer-events-none transition-transform"
+        :style="{ transform: `translateY(${Math.min(pullDelta / 2, 40)}px)` }"
+      >
+        <div class="bg-bg1 border border-border p-2 rounded-full shadow-lg">
+          <RefreshCcw :size="20" class="text-green animate-spin" :style="{ animationDuration: '2s', transform: `rotate(${pullDelta * 2}deg)` }" />
+        </div>
+      </div>
+
       <!-- Row 1: Actions & Navigation -->
       <div class="flex items-center justify-between gap-3">
         <!-- Left: Back / Contextual Action -->
         <div class="flex items-center gap-2">
           <button
             @click="handleBack"
-            class="shrink-0 p-2 border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 transition-all cursor-pointer bg-bg1 shadow-sm"
+            class="min-w-[44px] min-h-[44px] flex items-center justify-center border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 duration-100 transition-all cursor-pointer bg-bg1 shadow-sm"
             aria-label="Back"
           >
             <ChevronLeft :size="20" />
@@ -169,20 +250,22 @@ function handleEdit() {
 
         <!-- Center: Contextual Title or Switcher -->
         <div class="flex-1 flex justify-center min-w-0 px-2">
-          <div v-if="renderedFile" class="font-bold text-fg truncate text-sm font-sans">
-            {{ renderedFile.name }}
+          <div v-if="renderedFile" class="flex justify-center">
+            <div class="px-3 py-1 bg-bg3 text-aqua text-[10px] font-bold uppercase tracking-widest rounded-full border border-border/50 font-sans shadow-sm">
+              {{ renderedFile.file_type }}
+            </div>
           </div>
           <div v-else class="flex bg-bg1 border border-border rounded-lg p-0.5 shadow-sm font-sans">
             <button
               @click="view = 'files'"
-              class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer font-sans"
+              class="min-h-[40px] px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95 duration-100 cursor-pointer font-sans"
               :class="view === 'files' ? 'bg-bg3 text-fg shadow-sm' : 'text-fg-dim hover:text-fg'"
             >
               Files
             </button>
             <button
               @click="view = 'git'"
-              class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer font-sans"
+              class="min-h-[40px] px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95 duration-100 cursor-pointer font-sans"
               :class="view === 'git' ? 'bg-bg3 text-fg shadow-sm' : 'text-fg-dim hover:text-fg'"
             >
               Git
@@ -195,15 +278,16 @@ function handleEdit() {
           <button
             v-if="view === 'files' && renderedFile"
             @click="handleEdit"
-            class="shrink-0 p-2 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 transition-all cursor-pointer bg-bg1 shadow-sm"
+            class="min-h-[44px] flex items-center gap-2 px-3 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 duration-100 transition-all cursor-pointer bg-bg1 shadow-sm font-sans"
             title="Edit File"
           >
-            <Edit2 :size="18" />
+            <Edit2 :size="16" />
+            <span class="text-xs font-bold">Edit</span>
           </button>
           <div v-else-if="view === 'files'" class="flex bg-bg1 border border-border rounded-xl overflow-hidden divide-x divide-border shadow-sm">
             <button
               @click="showSearch = !showSearch"
-              class="p-2 text-fg-dim hover:text-yellow active:bg-bg3 transition-all cursor-pointer"
+              class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-yellow active:bg-bg3 active:scale-95 duration-100 transition-all cursor-pointer"
               :class="{ 'bg-bg3 text-yellow': showSearch }"
               title="Search Files"
             >
@@ -212,7 +296,7 @@ function handleEdit() {
             <button
               @click="onPull"
               :disabled="syncing === repo.id"
-              class="p-2 text-fg-dim hover:text-green active:bg-bg3 transition-all disabled:opacity-30 cursor-pointer"
+              class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-green active:bg-bg3 active:scale-95 duration-100 transition-all disabled:opacity-30 cursor-pointer"
               title="Pull Changes"
             >
               <Loader2 v-if="syncing === repo.id" :size="18" class="animate-spin" />
@@ -221,7 +305,7 @@ function handleEdit() {
             <button
               @click="onPush"
               :disabled="syncing === repo.id"
-              class="p-2 text-fg-dim hover:text-aqua active:bg-bg3 transition-all disabled:opacity-30 cursor-pointer"
+              class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-aqua active:bg-bg3 active:scale-95 duration-100 transition-all disabled:opacity-30 cursor-pointer"
               title="Push Changes"
             >
               <Loader2 v-if="syncing === repo.id" :size="18" class="animate-spin" />
@@ -233,17 +317,18 @@ function handleEdit() {
 
       <!-- Row 2: Breadcrumbs / Meta -->
       <div v-if="view === 'files'" class="flex items-center">
-        <div v-if="renderedFile" class="px-3 py-0.5 bg-bg3 text-aqua text-[9px] font-bold uppercase tracking-widest rounded-full border border-border/50 font-sans">
-          {{ renderedFile.file_type }}
+        <div v-if="renderedFile" class="flex items-center gap-1.5 px-4 py-2 bg-bg1 border border-border rounded-full text-[11px] font-mono text-fg-dim w-full shadow-inner overflow-hidden">
+          <span class="opacity-40 truncate">{{ currentRelativePath ? currentRelativePath + '/' : '' }}</span>
+          <span class="text-fg font-bold truncate">{{ currentFilePath?.split('/').pop() }}</span>
         </div>
         <div v-else class="flex items-center gap-1 px-3 py-1.5 bg-bg1 border border-border rounded-full text-[11px] font-mono text-fg-dim overflow-x-auto no-scrollbar w-full shadow-inner font-mono">
           <template v-if="breadcrumbs.length > 2">
-            <button @click="navigateToBreadcrumb(0)" class="hover:text-yellow transition-colors cursor-pointer">…</button>
+            <button @click="navigateToBreadcrumb(0)" class="hover:text-yellow transition-colors cursor-pointer min-h-[30px] px-1">…</button>
             <span class="text-border">/</span>
             <template v-for="(crumb, i) in breadcrumbs.slice(-2)" :key="crumb.path">
               <button
                 @click="navigateToBreadcrumb(breadcrumbs.length - 2 + i)"
-                class="hover:text-yellow transition-colors cursor-pointer truncate max-w-[100px]"
+                class="hover:text-yellow transition-colors cursor-pointer truncate max-w-[100px] min-h-[30px] px-1"
                 :class="{ 'text-fg font-bold': i === 1 }"
               >
                 {{ crumb.name }}
@@ -255,7 +340,7 @@ function handleEdit() {
             <template v-for="(crumb, i) in breadcrumbs" :key="crumb.path">
               <button
                 @click="navigateToBreadcrumb(i)"
-                class="hover:text-yellow transition-colors cursor-pointer truncate max-w-[120px]"
+                class="hover:text-yellow transition-colors cursor-pointer truncate max-w-[120px] min-h-[30px] px-1"
                 :class="{ 'text-fg font-bold': i === breadcrumbs.length - 1 }"
               >
                 {{ crumb.name }}
@@ -268,12 +353,16 @@ function handleEdit() {
     </div>
 
     <!-- Git View -->
-    <div v-if="view === 'git'">
+    <div v-if="view === 'git'" class="flex-1 overflow-y-auto px-6 -mx-6">
       <GitWorkflow :repo="repo" />
     </div>
 
     <!-- Files View -->
-    <div v-else>
+    <div 
+      v-else 
+      class="flex-1 overflow-y-auto transition-transform duration-200"
+      :style="{ transform: `translateX(${Math.min(swipeDelta / 2, 80)}px)` }"
+    >
       <!-- Search Bar -->
       <Transition name="slide">
         <div v-if="showSearch" class="mb-6">

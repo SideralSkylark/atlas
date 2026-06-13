@@ -30,6 +30,9 @@ async function onClone(url: string) {
       type: res.success ? "success" : "error",
       text: res.message,
     });
+    if (res.success && 'vibrate' in navigator) {
+      navigator.vibrate([10, 50, 10]);
+    }
   }
 }
 
@@ -55,7 +58,7 @@ onMounted(loadRepos);
       </div>
       <button
         @click="showCredentials = true"
-        class="p-2 text-fg-dim hover:text-fg transition-colors cursor-pointer"
+        class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-fg transition-all active:scale-95 duration-100 cursor-pointer"
         title="Settings"
       >
         <Settings :size="24" />
@@ -101,7 +104,7 @@ onMounted(loadRepos);
           <div class="w-12 h-1.5 bg-bg3 rounded-full mx-auto mb-6" @click="showCredentials = false"></div>
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-xl font-bold text-fg">Settings</h2>
-            <button @click="showCredentials = false" class="p-2 text-fg-dim hover:text-fg transition-colors">
+            <button @click="showCredentials = false" class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-fg transition-all active:scale-95 duration-100 cursor-pointer">
               <X :size="24" />
             </button>
           </div>

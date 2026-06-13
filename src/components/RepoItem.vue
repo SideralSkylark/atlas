@@ -20,6 +20,7 @@ function startPress() {
   if (props.deleting) return;
   pressTimer = window.setTimeout(() => {
     showDeleteConfirm.value = true;
+    if ('vibrate' in navigator) navigator.vibrate(30);
   }, 400);
 }
 

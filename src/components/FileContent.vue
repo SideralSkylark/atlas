@@ -35,20 +35,6 @@ async function copyContent(content: string) {
 <template>
   <div class="max-w-full overflow-hidden">
     <div class="bg-bg1 border border-border rounded-xl overflow-hidden shadow-sm">
-      <!-- Sticky Header -->
-      <div class="sticky top-0 z-20 flex items-center justify-between px-4 py-2 bg-bg1 border-b border-border rounded-t-xl">
-        <div class="text-[10px] font-mono text-fg-dim truncate pr-4 uppercase tracking-wider font-bold">
-          {{ filename || file.name }}
-        </div>
-        <button
-          @click="emit('edit')"
-          class="flex items-center gap-1.5 px-2.5 py-1 bg-bg3 border border-border/50 rounded-lg text-[10px] font-bold text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 transition-all cursor-pointer shadow-sm font-sans"
-        >
-          <Edit2 :size="12" />
-          <span class="font-sans">Edit</span>
-        </button>
-      </div>
-
       <!-- Code / Plain / HTML -->
       <div v-if="file.file_type === 'code' || file.file_type === 'plain' || file.file_type === 'html'" class="relative bg-bg0">
         <div v-if="file.file_type === 'code'" class="absolute right-4 top-4 z-10">
