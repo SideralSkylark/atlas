@@ -153,37 +153,36 @@ function handleEdit() {
     />
 
     <!-- Header -->
-    <div class="sticky top-0 z-20 bg-bg0 pb-4 pt-1">
-      <div class="flex items-center justify-between gap-4">
+    <div class="sticky top-0 z-20 bg-bg1 pb-4 pt-1 space-y-3 shadow-md -mx-6 px-6" style="box-shadow: var(--shadow-md), var(--shadow-inset)">
+      <!-- Row 1: Actions & Navigation -->
+      <div class="flex items-center justify-between gap-3">
+        <!-- Left: Back / Contextual Action -->
         <div class="flex items-center gap-2">
           <button
             @click="handleBack"
-            class="shrink-0 p-2 border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 transition-all cursor-pointer bg-bg1"
+            class="shrink-0 p-2 border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 transition-all cursor-pointer bg-bg1 shadow-sm"
             aria-label="Back"
           >
             <ChevronLeft :size="20" />
           </button>
+        </div>
 
-          <button
-            v-if="view === 'files' && renderedFile"
-            @click="handleEdit"
-            class="shrink-0 p-2 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 transition-all cursor-pointer bg-bg1"
-            title="Edit File"
-          >
-            <Edit2 :size="20" />
-          </button>
-
-          <div class="flex bg-bg1 border border-border rounded-lg p-0.5 shadow-sm">
+        <!-- Center: Contextual Title or Switcher -->
+        <div class="flex-1 flex justify-center min-w-0 px-2">
+          <div v-if="renderedFile" class="font-bold text-fg truncate text-sm font-sans">
+            {{ renderedFile.name }}
+          </div>
+          <div v-else class="flex bg-bg1 border border-border rounded-lg p-0.5 shadow-sm font-sans">
             <button
               @click="view = 'files'"
-              class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer"
+              class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer font-sans"
               :class="view === 'files' ? 'bg-bg3 text-fg shadow-sm' : 'text-fg-dim hover:text-fg'"
             >
               Files
             </button>
             <button
               @click="view = 'git'"
-              class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer"
+              class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer font-sans"
               :class="view === 'git' ? 'bg-bg3 text-fg shadow-sm' : 'text-fg-dim hover:text-fg'"
             >
               Git
@@ -191,78 +190,79 @@ function handleEdit() {
           </div>
         </div>
 
-        <div v-if="view === 'files'" class="flex-1 flex items-center justify-end overflow-hidden">
-          <div v-if="renderedFile" class="flex items-center gap-2 overflow-hidden">
-            <span class="text-sm font-bold text-fg truncate">{{ renderedFile.name }}</span>
-            <span class="px-2 py-0.5 bg-bg3 text-aqua text-[10px] font-bold uppercase tracking-wider rounded border border-border/50 shrink-0">
-              {{ renderedFile.file_type }}
-            </span>
+        <!-- Right: Actions Group -->
+        <div class="flex items-center">
+          <button
+            v-if="view === 'files' && renderedFile"
+            @click="handleEdit"
+            class="shrink-0 p-2 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 transition-all cursor-pointer bg-bg1 shadow-sm"
+            title="Edit File"
+          >
+            <Edit2 :size="18" />
+          </button>
+          <div v-else-if="view === 'files'" class="flex bg-bg1 border border-border rounded-xl overflow-hidden divide-x divide-border shadow-sm">
+            <button
+              @click="showSearch = !showSearch"
+              class="p-2 text-fg-dim hover:text-yellow active:bg-bg3 transition-all cursor-pointer"
+              :class="{ 'bg-bg3 text-yellow': showSearch }"
+              title="Search Files"
+            >
+              <Search :size="18" />
+            </button>
+            <button
+              @click="onPull"
+              :disabled="syncing === repo.id"
+              class="p-2 text-fg-dim hover:text-green active:bg-bg3 transition-all disabled:opacity-30 cursor-pointer"
+              title="Pull Changes"
+            >
+              <Loader2 v-if="syncing === repo.id" :size="18" class="animate-spin" />
+              <Download v-else :size="18" />
+            </button>
+            <button
+              @click="onPush"
+              :disabled="syncing === repo.id"
+              class="p-2 text-fg-dim hover:text-aqua active:bg-bg3 transition-all disabled:opacity-30 cursor-pointer"
+              title="Push Changes"
+            >
+              <Loader2 v-if="syncing === repo.id" :size="18" class="animate-spin" />
+              <Upload v-else :size="18" />
+            </button>
           </div>
+        </div>
+      </div>
 
-          <div v-else class="flex items-center gap-3 overflow-hidden">
-            <div class="flex items-center gap-1 flex-wrap justify-end text-sm font-medium">
-              <template v-if="breadcrumbs.length > 2">
-                <button
-                  @click="navigateToBreadcrumb(0)"
-                  class="text-fg-dim hover:text-yellow transition-colors cursor-pointer"
-                >
-                  ...
-                </button>
-                <ChevronRight :size="14" class="text-border" />
-                <template v-for="(crumb, i) in breadcrumbs.slice(-2)" :key="crumb.path">
-                  <button
-                    @click="navigateToBreadcrumb(breadcrumbs.length - 2 + i)"
-                    class="text-fg-dim hover:text-yellow transition-colors cursor-pointer"
-                    :class="{ 'text-fg font-bold': i === 1 }"
-                  >
-                    {{ crumb.name }}
-                  </button>
-                  <ChevronRight v-if="i === 0" :size="14" class="text-border" />
-                </template>
-              </template>
-              <template v-else>
-                <template v-for="(crumb, i) in breadcrumbs" :key="crumb.path">
-                  <button
-                    @click="navigateToBreadcrumb(i)"
-                    class="text-fg-dim hover:text-yellow transition-colors cursor-pointer"
-                    :class="{ 'text-fg font-bold': i === breadcrumbs.length - 1 }"
-                  >
-                    {{ crumb.name }}
-                  </button>
-                  <ChevronRight v-if="i < breadcrumbs.length - 1" :size="14" class="text-border" />
-                </template>
-              </template>
-            </div>
-
-            <div class="flex gap-1.5 shrink-0">
+      <!-- Row 2: Breadcrumbs / Meta -->
+      <div v-if="view === 'files'" class="flex items-center">
+        <div v-if="renderedFile" class="px-3 py-0.5 bg-bg3 text-aqua text-[9px] font-bold uppercase tracking-widest rounded-full border border-border/50 font-sans">
+          {{ renderedFile.file_type }}
+        </div>
+        <div v-else class="flex items-center gap-1 px-3 py-1.5 bg-bg1 border border-border rounded-full text-[11px] font-mono text-fg-dim overflow-x-auto no-scrollbar w-full shadow-inner font-mono">
+          <template v-if="breadcrumbs.length > 2">
+            <button @click="navigateToBreadcrumb(0)" class="hover:text-yellow transition-colors cursor-pointer">…</button>
+            <span class="text-border">/</span>
+            <template v-for="(crumb, i) in breadcrumbs.slice(-2)" :key="crumb.path">
               <button
-                @click="showSearch = !showSearch"
-                class="p-2 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 transition-all cursor-pointer bg-bg1"
-                :class="{ 'bg-bg3 border-yellow text-yellow': showSearch }"
-                title="Search Files"
+                @click="navigateToBreadcrumb(breadcrumbs.length - 2 + i)"
+                class="hover:text-yellow transition-colors cursor-pointer truncate max-w-[100px]"
+                :class="{ 'text-fg font-bold': i === 1 }"
               >
-                <Search :size="18" />
+                {{ crumb.name }}
               </button>
+              <span v-if="i === 0" class="text-border">/</span>
+            </template>
+          </template>
+          <template v-else>
+            <template v-for="(crumb, i) in breadcrumbs" :key="crumb.path">
               <button
-                @click="onPull"
-                :disabled="syncing === repo.id"
-                class="p-2 border border-border rounded-lg text-fg-dim hover:text-green hover:border-green active:scale-95 transition-all disabled:opacity-30 cursor-pointer bg-bg1"
-                title="Pull Changes"
+                @click="navigateToBreadcrumb(i)"
+                class="hover:text-yellow transition-colors cursor-pointer truncate max-w-[120px]"
+                :class="{ 'text-fg font-bold': i === breadcrumbs.length - 1 }"
               >
-                <Loader2 v-if="syncing === repo.id" :size="18" class="animate-spin" />
-                <Download v-else :size="18" />
+                {{ crumb.name }}
               </button>
-              <button
-                @click="onPush"
-                :disabled="syncing === repo.id"
-                class="p-2 border border-border rounded-lg text-fg-dim hover:text-aqua hover:border-aqua active:scale-95 transition-all disabled:opacity-30 cursor-pointer bg-bg1"
-                title="Push Changes"
-              >
-                <Loader2 v-if="syncing === repo.id" :size="18" class="animate-spin" />
-                <Upload v-else :size="18" />
-              </button>
-            </div>
-          </div>
+              <span v-if="i < breadcrumbs.length - 1" class="text-border">/</span>
+            </template>
+          </template>
         </div>
       </div>
     </div>
@@ -282,7 +282,7 @@ function handleEdit() {
             <input
               v-model="searchQuery"
               placeholder="Search filenames..."
-              class="w-full pl-10 pr-4 py-2.5 bg-bg1 border border-border rounded-lg outline-none focus:border-yellow transition-all text-sm"
+              class="w-full pl-10 pr-4 py-2.5 bg-bg1 border border-border rounded-lg outline-none focus:border-yellow transition-all text-sm font-mono"
               autofocus
             />
           </div>
@@ -296,7 +296,7 @@ function handleEdit() {
       </div>
 
       <div v-else-if="renderedFile !== null">
-        <FileContent :file="renderedFile" @edit="handleEdit" />
+        <FileContent :file="renderedFile" :filename="renderedFile.name" @edit="handleEdit" />
       </div>
 
       <!-- Search Results -->
@@ -312,7 +312,7 @@ function handleEdit() {
               <Folder v-if="result.is_dir" :size="18" class="fill-yellow/10" />
               <FileText v-else :size="18" />
             </div>
-            <span class="truncate font-bold text-sm">{{ result.name }}</span>
+            <span class="truncate font-bold text-sm font-sans font-medium">{{ result.name }}</span>
           </div>
           <span class="text-[10px] text-fg-dim mt-1 truncate font-mono opacity-60 ml-7">{{ result.relative_path }}</span>
         </div>
@@ -334,12 +334,12 @@ function handleEdit() {
             <Folder v-if="entry.is_dir" :size="20" class="fill-yellow/10" />
             <FileText v-else :size="20" />
           </div>
-          <span class="truncate font-medium text-sm">{{ entry.name }}</span>
+          <span class="truncate font-medium text-sm font-sans font-medium">{{ entry.name }}</span>
         </div>
         
         <div v-if="files.length === 0" class="flex flex-col items-center justify-center py-16 text-fg-dim opacity-30">
           <Home :size="40" class="mb-3 stroke-[1.5]" />
-          <p class="text-sm">Empty directory</p>
+          <p class="text-sm font-sans">Empty directory</p>
         </div>
       </div>
     </div>

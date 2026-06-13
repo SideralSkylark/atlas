@@ -141,13 +141,28 @@ no risk of other apps modifying repo state.
 
 --- 
 
-## Current Bugs 
-- git_pull and git_push both hardcode "main" — they'll silently fail or error on 
-repos with a different default branch (e.g. master, develop). The branch name 
-should be read from repo.head() the same way list_repos already does.
-- git_pull fetches &["main"] by refspec string but then looks up 
-FETCH_HEAD — that's fine, but reference.set_target also hardcodes 
-refs/heads/main. Same issue.
-- render_file constructs a new SyntaxSet and ThemeSet on every 
-call — these are expensive to load. They should be constructed 
-once (e.g. as tauri::State).
+## Roadmap for frontend
+
+### 1. Visual Polish & Identity
+*   **Elevation & Depth**: Refine the "Everforest Hard Dark" theme with a consistent elevation system using subtle shadows and layered backgrounds (bg0 to bg3) to better distinguish between the background and interactive cards.
+*   **Typography Hybrid**: Introduce a clean sans-serif font (e.g., *Inter* or *Geist*) for primary UI elements (labels, buttons, headers) to improve legibility on small screens, while maintaining monospace for code, hashes, and diffs.
+*   **Micro-interactions**: Add subtle haptic feedback (via Tauri plugins) for critical actions like successful commits, cloning, or long-press reveals.
+
+### 2. Navigation & Layout Evolution
+*   **Bottom Navigation**: As features grow, transition to a bottom navigation bar for top-level views (e.g., Repositories, Activity, Settings) to provide better "thumb-reach" accessibility.
+*   **Adaptive Views**: Implement a master-detail split-pane layout for tablets and foldable devices, allowing users to see the file tree and editor side-by-side.
+*   **Sticky Context**: Implement shrinking headers in the file browser that provide more vertical space as the user scrolls, while keeping breadcrumbs visible.
+
+### 3. Enhanced Git UX
+*   **Hunk-Level Staging**: Allow staging or unstaging of specific hunks (blocks of code) directly from the Diff bottom sheet, rather than just whole files.
+*   **Gesture Navigation**: Add "Swipe-to-Back" for file hierarchy navigation and "Pull-to-Refresh" for triggering `git fetch` or refreshing file lists.
+*   **Optimistic UI**: Use optimistic updates for staging and branch switching to make the interface feel instantaneous while Git operations complete in the background.
+
+### 4. Editor & Content Experience
+*   **Mobile Editor Toolbar**: Add a specialized "symbol bar" above the soft keyboard in the Editor for common characters like `{`, `}`, `[`, `]`, and `tab` to reduce keyboard-switching fatigue.
+*   **Rich Previews**: Add native-feeling image previews and interactive Markdown rendering with support for task lists and tables.
+*   **Global Search Expansion**: Enhance the search interface to include "Search in File Content" (ripgrep-style) across the entire repository.
+
+### 5. Accessibility & Customization
+*   **Theme Engine**: Support for an "Everforest Light" mode and a "Pure Black" (OLED) theme for battery saving.
+*   **Touch Target Audit**: Ensure all interactive elements meet the minimum 44x44dp touch target standard for improved accessibility.

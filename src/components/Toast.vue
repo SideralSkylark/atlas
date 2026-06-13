@@ -31,20 +31,21 @@ watch(() => props.message, (newVal) => {
   >
     <div
       v-if="visible && message"
-      class="fixed bottom-8 left-6 right-6 p-4 rounded-xl border shadow-2xl z-50 flex items-center gap-3 backdrop-blur-md overflow-hidden"
+      class="fixed bottom-8 left-6 right-6 p-4 rounded-xl border shadow-lg z-50 flex items-center gap-3 backdrop-blur-md overflow-hidden"
       :class="
         message.type === 'success'
           ? 'bg-bg1/90 border-green text-green'
           : 'bg-bg1/90 border-red text-red'
       "
+      style="box-shadow: var(--shadow-lg)"
     >
       <CheckCircle v-if="message.type === 'success'" :size="20" />
       <AlertCircle v-else :size="20" />
-      <span class="text-sm font-bold tracking-tight">{{ message.text }}</span>
+      <span class="text-[0.8rem] font-bold tracking-[0.01em] font-sans">{{ message.text }}</span>
       
       <!-- Progress Bar -->
       <div 
-        class="absolute bottom-0 left-0 h-1 bg-current opacity-40 animate-deplete"
+        class="absolute bottom-0 left-0 h-1 bg-current opacity-70 rounded-full animate-deplete"
       ></div>
     </div>
   </Transition>

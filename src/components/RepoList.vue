@@ -48,23 +48,26 @@ onMounted(loadRepos);
 
 <template>
   <div>
-    <div class="flex justify-between items-center mb-10">
-      <h1 class="text-3xl font-black text-yellow tracking-tight">Atlas</h1>
+    <div class="flex justify-between items-start mb-10">
+      <div>
+        <h1 class="text-3xl font-black text-yellow tracking-tight leading-none font-sans">Atlas</h1>
+        <p class="text-fg-dim text-[10px] uppercase tracking-widest font-bold mt-1.5 ml-0.5 font-sans">Git on Android</p>
+      </div>
       <button
         @click="showCredentials = true"
-        class="p-2.5 rounded-full border border-border text-fg-dim hover:text-fg hover:border-fg-dim transition-all active:scale-90 cursor-pointer shadow-sm bg-bg1"
+        class="p-2 text-fg-dim hover:text-fg transition-colors cursor-pointer"
         title="Settings"
       >
-        <Settings :size="20" />
+        <Settings :size="24" />
       </button>
     </div>
 
     <RepoClone :cloning="cloning" @clone="onClone" />
 
-    <div class="flex items-center justify-between mb-4 px-1">
-      <h2 class="text-xs font-bold uppercase tracking-widest text-fg-dim">Your Repositories</h2>
-      <span v-if="repos.length > 0" class="text-[10px] px-2 py-0.5 bg-bg3 text-fg-dim rounded-full font-bold border border-border/50">
-        {{ repos.length }} {{ repos.length === 1 ? 'repo' : 'repos' }}
+    <div class="flex items-center justify-between mt-8 mb-4 px-1">
+      <h2 class="text-[10px] font-bold uppercase tracking-widest text-fg-dim font-sans">Repositories</h2>
+      <span v-if="repos.length > 0" class="text-[10px] px-2 py-0.5 bg-bg3 text-fg-dim rounded-full font-bold border border-border/50 font-sans">
+        {{ repos.length }}
       </span>
     </div>
 
@@ -93,11 +96,12 @@ onMounted(loadRepos);
       </Transition>
       <Transition name="sheet">
         <div v-if="showCredentials" 
-             class="fixed bottom-0 left-0 right-0 bg-bg1 border-t border-border rounded-t-3xl p-6 z-50 max-h-[90vh] overflow-y-auto shadow-2xl">
+             class="fixed bottom-0 left-0 right-0 bg-bg1 border-t border-border rounded-t-3xl p-6 z-50 max-h-[90vh] overflow-y-auto shadow-lg"
+             style="box-shadow: var(--shadow-lg)">
           <div class="w-12 h-1.5 bg-bg3 rounded-full mx-auto mb-6" @click="showCredentials = false"></div>
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-xl font-bold text-fg">Settings</h2>
-            <button @click="showCredentials = false" class="p-2 hover:bg-bg3 rounded-full transition-colors">
+            <button @click="showCredentials = false" class="p-2 text-fg-dim hover:text-fg transition-colors">
               <X :size="24" />
             </button>
           </div>

@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { Clipboard, ClipboardCheck } from "@lucide/vue";
+import { Clipboard, ClipboardCheck, Edit2 } from "@lucide/vue";
 import type { RenderedFile } from "../composables/useFileSystem";
 
 defineProps<{
   file: RenderedFile;
+  filename?: string;
+}>();
+
+const emit = defineEmits<{
+  (e: "edit"): void;
 }>();
 
 const copied = ref(false);
@@ -28,14 +33,28 @@ async function copyContent(content: string) {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="max-w-full overflow-hidden">
     <div class="bg-bg1 border border-border rounded-xl overflow-hidden shadow-sm">
+      <!-- Sticky Header -->
+      <div class="sticky top-0 z-20 flex items-center justify-between px-4 py-2 bg-bg1 border-b border-border rounded-t-xl">
+        <div class="text-[10px] font-mono text-fg-dim truncate pr-4 uppercase tracking-wider font-bold">
+          {{ filename || file.name }}
+        </div>
+        <button
+          @click="emit('edit')"
+          class="flex items-center gap-1.5 px-2.5 py-1 bg-bg3 border border-border/50 rounded-lg text-[10px] font-bold text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 transition-all cursor-pointer shadow-sm font-sans"
+        >
+          <Edit2 :size="12" />
+          <span class="font-sans">Edit</span>
+        </button>
+      </div>
+
       <!-- Code / Plain / HTML -->
-      <div v-if="file.file_type === 'code' || file.file_type === 'plain' || file.file_type === 'html'" class="relative">
+      <div v-if="file.file_type === 'code' || file.file_type === 'plain' || file.file_type === 'html'" class="relative bg-bg0">
         <div v-if="file.file_type === 'code'" class="absolute right-4 top-4 z-10">
           <button
             @click="copyContent(file.content)"
-            class="p-2 bg-bg0/50 backdrop-blur-md border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim transition-all active:scale-95 cursor-pointer shadow-lg"
+            class="p-2 bg-bg1/80 backdrop-blur-md border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim transition-all active:scale-95 cursor-pointer shadow-lg"
             :title="copied ? 'Copied!' : 'Copy to clipboard'"
           >
             <ClipboardCheck v-if="copied" :size="16" class="text-green" />
@@ -43,9 +62,9 @@ async function copyContent(content: string) {
           </button>
         </div>
 
-        <div class="p-4">
-          <div v-if="file.file_type === 'code'" v-html="file.content" class="text-sm font-mono leading-relaxed whitespace-pre-wrap break-all"></div>
-          <div v-else-if="file.file_type === 'plain'" class="max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <div>
+          <div v-if="file.file_type === 'code'" v-html="file.content" class="p-4 text-sm font-mono leading-relaxed overflow-x-hidden max-w-full syntect-highlight"></div>
+          <div v-else-if="file.file_type === 'plain'" class="max-h-[70vh] overflow-y-auto custom-scrollbar p-4">
             <pre class="text-sm text-fg leading-relaxed font-mono whitespace-pre-wrap break-words max-w-full overflow-x-hidden">{{ file.content }}</pre>
           </div>
           <div v-else-if="file.file_type === 'html'" v-html="file.content" class="bg-white text-black p-2 rounded min-h-[200px] max-w-full overflow-x-hidden"></div>
@@ -53,7 +72,7 @@ async function copyContent(content: string) {
       </div>
 
       <!-- Markdown -->
-      <div v-else-if="file.file_type === 'markdown'" class="p-6 prose-custom">
+      <div v-else-if="file.file_type === 'markdown'" class="p-6 prose-custom bg-bg1 max-w-full overflow-x-hidden">
         <div v-html="file.content"></div>
       </div>
     </div>
@@ -73,12 +92,21 @@ async function copyContent(content: string) {
 .prose-custom ul { @apply list-disc list-inside mb-4 ml-2; }
 .prose-custom ol { @apply list-decimal list-inside mb-4 ml-2; }
 .prose-custom code { @apply px-1.5 py-0.5 bg-bg3 rounded text-aqua font-mono text-xs; }
-.prose-custom pre { @apply p-4 bg-bg0 rounded-lg overflow-x-auto mb-4 border border-border; }
+.prose-custom pre { @apply p-4 bg-bg0 rounded-lg overflow-x-auto max-w-full mb-4 border border-border; }
 .prose-custom pre code { @apply p-0 bg-transparent text-fg; }
 .prose-custom blockquote { @apply border-l-4 border-green pl-4 italic text-fg-dim mb-4; }
 .prose-custom a { @apply text-aqua hover:underline; }
 
 /* Syntect styles fix */
+.syntect-highlight, .syntect-highlight pre { 
+  background: transparent !important; 
+  margin: 0 !important; 
+  padding: 0 !important;
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+  overflow-x: hidden !important;
+}
+
 .syntect-highlight {
   font-family: inherit;
 }

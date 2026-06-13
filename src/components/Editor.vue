@@ -105,7 +105,7 @@ onMounted(loadContent);
           <X :size="20" />
         </button>
         <div class="min-w-0">
-          <h2 class="text-sm font-bold truncate">{{ relativePath.split('/').pop() }}</h2>
+          <h2 class="text-sm font-bold truncate font-sans font-medium">{{ relativePath.split('/').pop() }}</h2>
           <p class="text-[10px] text-fg-dim truncate font-mono">{{ relativePath }}</p>
         </div>
       </div>
@@ -143,39 +143,39 @@ onMounted(loadContent);
     <!-- Commit Dialog -->
     <Transition name="fade">
       <div v-if="showCommitDialog" class="fixed inset-0 z-[60] bg-bg0/80 backdrop-blur-sm flex items-center justify-center p-6">
-        <div class="w-full max-w-sm bg-bg1 border border-border rounded-2xl p-6 shadow-2xl space-y-4">
+        <div class="w-full max-w-sm bg-bg1 border border-border rounded-2xl p-6 shadow-lg space-y-4" style="box-shadow: var(--shadow-lg)">
           <div class="flex items-center justify-between">
-            <h3 class="text-lg font-bold">Commit Changes</h3>
-            <button @click="showCommitDialog = false" class="text-fg-dim hover:text-fg"><X :size="20" /></button>
+            <h3 class="text-lg font-bold font-sans">Commit Changes</h3>
+            <button @click="showCommitDialog = false" class="text-fg-dim hover:text-fg font-sans"><X :size="20" /></button>
           </div>
           
           <div class="space-y-3">
             <textarea
               v-model="commitMessage"
               placeholder="Commit message..."
-              class="w-full h-24 p-3 bg-bg0 border border-border rounded-lg outline-none focus:border-yellow text-sm resize-none"
+              class="w-full h-24 p-3 bg-bg0 border border-border rounded-lg outline-none focus:border-yellow text-sm resize-none font-sans"
               autofocus
             ></textarea>
             
-            <label class="flex items-center gap-2 cursor-pointer group">
+            <label class="flex items-center gap-2 cursor-pointer group font-sans">
               <div class="relative flex items-center">
                 <input type="checkbox" v-model="shouldPushAfterCommit" class="peer hidden" />
                 <div class="w-5 h-5 border-2 border-border rounded peer-checked:bg-yellow peer-checked:border-yellow transition-all"></div>
                 <Check class="absolute text-bg0 scale-0 peer-checked:scale-100 transition-all" :size="16" />
               </div>
-              <span class="text-sm text-fg-dim group-hover:text-fg transition-colors">Push after commit</span>
+              <span class="text-sm text-fg-dim group-hover:text-fg transition-colors font-sans">Push after commit</span>
             </label>
           </div>
 
           <button
             @click="onCommit"
             :disabled="!commitMessage || gitLoading"
-            class="w-full py-3 bg-yellow text-bg0 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-30"
+            class="w-full py-3 bg-yellow text-bg0 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-30 font-sans"
           >
             <Loader2 v-if="gitLoading || pushLoading === repo.id" :size="20" class="animate-spin" />
             <template v-else>
               <GitCommit :size="20" />
-              <span>Commit & {{ shouldPushAfterCommit ? 'Push' : 'Save' }}</span>
+              <span class="font-sans">Commit & {{ shouldPushAfterCommit ? 'Push' : 'Save' }}</span>
             </template>
           </button>
         </div>
@@ -183,13 +183,13 @@ onMounted(loadContent);
     </Transition>
 
     <!-- Unsaved Changes Warning -->
-    <div class="mt-4 flex items-center justify-between">
-      <div v-if="hasChanges" class="flex items-center gap-2 text-[10px] text-orange animate-pulse font-bold uppercase tracking-wider">
+    <div class="mt-4 flex items-center justify-between font-sans">
+      <div v-if="hasChanges" class="flex items-center gap-2 text-[10px] text-orange animate-pulse font-bold uppercase tracking-wider font-sans">
         <AlertCircle :size="12" />
-        <span>Unsaved changes</span>
+        <span class="font-sans">Unsaved changes</span>
       </div>
       <div v-else></div>
-      <div class="text-[10px] text-fg-dim font-mono bg-bg1 px-2 py-0.5 rounded border border-border/50">
+      <div class="text-[10px] text-fg-dim font-mono bg-bg1 px-2 py-0.5 rounded border border-border/50 font-mono">
         {{ stats }}
       </div>
     </div>

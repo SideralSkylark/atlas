@@ -101,12 +101,12 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Tabs -->
-    <div class="flex border-b border-border">
+    <div class="flex border-b border-border font-sans">
       <button
         v-for="tab in ['branches', 'history', 'changes'] as const"
         :key="tab"
         @click="activeTab = tab"
-        class="px-4 py-2 text-sm font-medium transition-colors border-b-2 capitalize cursor-pointer"
+        class="px-4 py-2 text-sm font-medium transition-colors border-b-2 capitalize cursor-pointer font-sans"
         :class="activeTab === tab ? 'border-yellow text-yellow' : 'border-transparent text-fg-dim hover:text-fg'"
       >
         {{ tab }}
@@ -114,15 +114,15 @@ onMounted(() => {
     </div>
 
     <!-- Error Message -->
-    <div v-if="error" class="p-3 bg-red/10 border border-red text-red rounded-lg text-sm flex items-center justify-between">
+    <div v-if="error" class="p-3 bg-red/10 border border-red text-red rounded-lg text-sm flex items-center justify-between font-sans">
       <span>{{ error }}</span>
       <button @click="error = null"><X :size="16" /></button>
     </div>
 
     <!-- Branches Tab -->
-    <div v-if="activeTab === 'branches'" class="space-y-4">
+    <div v-if="activeTab === 'branches'" class="space-y-4 font-sans">
       <div class="flex items-center justify-between">
-        <h3 class="text-lg font-bold">Branches</h3>
+        <h3 class="text-lg font-bold font-sans">Branches</h3>
         <button
           @click="showCreateBranch = !showCreateBranch"
           class="p-2 border border-border rounded-lg text-fg-dim hover:text-yellow hover:border-yellow active:scale-95 transition-all cursor-pointer"
@@ -151,13 +151,14 @@ onMounted(() => {
         <div
           v-for="branch in branches"
           :key="branch.name"
-          class="flex items-center justify-between p-3 bg-bg1 border border-border rounded-lg"
+          class="flex items-center justify-between p-3 bg-bg1 border border-border rounded-lg shadow-sm"
           :class="{ 'border-yellow': branch.is_current }"
+          style="box-shadow: var(--shadow-sm), var(--shadow-inset)"
         >
           <div class="flex items-center gap-3">
             <GitBranch :size="18" :class="branch.is_current ? 'text-yellow' : 'text-fg-dim'" />
-            <span :class="{ 'font-bold text-yellow': branch.is_current }" class="text-sm">{{ branch.name }}</span>
-            <span v-if="branch.is_remote" class="text-[9px] px-1.5 py-0.5 bg-bg2 rounded text-fg-dim uppercase tracking-wider">Remote</span>
+            <span :class="{ 'font-bold text-yellow': branch.is_current }" class="text-sm font-mono">{{ branch.name }}</span>
+            <span v-if="branch.is_remote" class="text-[9px] px-1.5 py-0.5 bg-bg2 rounded text-fg-dim uppercase tracking-wider font-sans">Remote</span>
           </div>
           <button
             v-if="!branch.is_current"
@@ -173,8 +174,8 @@ onMounted(() => {
     </div>
 
     <!-- History Tab -->
-    <div v-if="activeTab === 'history'" class="space-y-4">
-      <div v-if="history.length === 0" class="flex flex-col items-center justify-center py-20 text-fg-dim opacity-30">
+    <div v-if="activeTab === 'history'" class="space-y-4 font-sans">
+      <div v-if="history.length === 0" class="flex flex-col items-center justify-center py-20 text-fg-dim opacity-30 font-sans">
         <GitCommit :size="40" class="mb-3" />
         <p class="text-sm font-medium">No commits yet</p>
       </div>
@@ -182,13 +183,14 @@ onMounted(() => {
         <div
           v-for="commit in history"
           :key="commit.hash"
-          class="p-4 bg-bg1 border border-border rounded-lg space-y-2"
+          class="p-4 bg-bg1 border border-border rounded-lg space-y-2 shadow-sm"
+          style="box-shadow: var(--shadow-sm), var(--shadow-inset)"
         >
           <div class="flex items-start justify-between gap-4">
-            <p class="font-bold text-sm leading-tight">{{ commit.message }}</p>
-            <span class="text-[10px] font-mono text-fg-dim bg-bg2 px-1.5 py-0.5 rounded">{{ commit.hash.substring(0, 7) }}</span>
+            <p class="font-bold text-sm leading-tight font-sans">{{ commit.message }}</p>
+            <span class="text-[10px] font-mono text-fg-dim bg-bg2 px-1.5 py-0.5 rounded font-mono">{{ commit.hash.substring(0, 7) }}</span>
           </div>
-          <div class="flex items-center justify-between text-[11px] text-fg-dim">
+          <div class="flex items-center justify-between text-[11px] text-fg-dim font-sans">
             <span>{{ commit.author }}</span>
             <span>{{ new Date(commit.date * 1000).toLocaleDateString() }}</span>
           </div>
@@ -197,13 +199,13 @@ onMounted(() => {
     </div>
 
     <!-- Changes Tab -->
-    <div v-if="activeTab === 'changes'" class="space-y-6">
+    <div v-if="activeTab === 'changes'" class="space-y-6 font-sans">
       <!-- Commit Form -->
-      <div class="space-y-3 p-4 bg-bg1 border border-border rounded-lg shadow-sm">
+      <div class="space-y-3 p-4 bg-bg1 border border-border rounded-lg shadow-md" style="box-shadow: var(--shadow-md), var(--shadow-inset)">
         <div class="space-y-2">
           <button 
             @click="showAuthor = !showAuthor"
-            class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-fg-dim hover:text-fg transition-colors cursor-pointer"
+            class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-fg-dim hover:text-fg transition-colors cursor-pointer font-sans"
           >
             <ChevronRight :size="12" class="transition-transform" :class="{ 'rotate-90': showAuthor }" />
             Author Info
@@ -214,12 +216,12 @@ onMounted(() => {
               <input 
                 v-model="authorName" 
                 placeholder="Name" 
-                class="px-2.5 py-1.5 bg-bg0 border border-border rounded text-[11px] outline-none focus:border-yellow"
+                class="px-2.5 py-1.5 bg-bg0 border border-border rounded text-[11px] outline-none focus:border-yellow font-sans"
               />
               <input 
                 v-model="authorEmail" 
                 placeholder="Email" 
-                class="px-2.5 py-1.5 bg-bg0 border border-border rounded text-[11px] outline-none focus:border-yellow"
+                class="px-2.5 py-1.5 bg-bg0 border border-border rounded text-[11px] outline-none focus:border-yellow font-sans"
               />
             </div>
           </Transition>
@@ -228,21 +230,21 @@ onMounted(() => {
         <textarea
           v-model="commitMessage"
           placeholder="Commit message..."
-          class="w-full h-20 p-3 bg-bg0 border border-border rounded-lg outline-none focus:border-green text-sm resize-none shadow-inner"
+          class="w-full h-20 p-3 bg-bg0 border border-border rounded-lg outline-none focus:border-green text-sm resize-none shadow-inner font-sans"
         ></textarea>
         
         <div class="flex gap-2">
           <button
             v-if="status.filter(s => !s.staged).length > 0"
             @click="onStageAll"
-            class="px-4 py-2.5 bg-bg3 text-fg border border-border rounded-lg text-xs font-bold active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap"
+            class="px-4 py-2.5 bg-bg3 text-fg border border-border rounded-lg text-xs font-bold active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap font-sans"
           >
             Stage All ({{ status.filter(s => !s.staged).length }})
           </button>
           <button
             @click="onCommit"
             :disabled="!commitMessage || status.filter(s => s.staged).length === 0"
-            class="flex-1 py-2.5 bg-green text-bg0 rounded-lg text-sm font-bold active:scale-[0.98] transition-all disabled:opacity-30 disabled:scale-100 cursor-pointer shadow-md"
+            class="flex-1 py-2.5 bg-green text-bg0 rounded-lg text-sm font-bold active:scale-[0.98] transition-all disabled:opacity-30 disabled:scale-100 cursor-pointer shadow-md font-sans"
           >
             Commit ({{ status.filter(s => s.staged).length }})
           </button>
@@ -251,7 +253,7 @@ onMounted(() => {
 
       <!-- Status List -->
       <div class="space-y-4">
-        <div v-if="status.length === 0" class="flex flex-col items-center justify-center py-10 text-fg-dim opacity-30">
+        <div v-if="status.length === 0" class="flex flex-col items-center justify-center py-10 text-fg-dim opacity-30 font-sans">
           <Check :size="40" class="mb-2" />
           <p class="text-sm font-medium">No changes to commit</p>
         </div>
@@ -262,14 +264,22 @@ onMounted(() => {
             :key="entry.path"
             class="flex items-center justify-between p-3 bg-bg1 border border-border rounded-xl shadow-sm"
             :class="{ 'border-green/30 bg-bg1/80': entry.staged }"
+            style="box-shadow: var(--shadow-sm), var(--shadow-inset)"
           >
             <div class="flex items-center gap-3 min-w-0 cursor-pointer" @click="viewDiff(entry.path, entry.staged)">
               <div :class="entry.staged ? 'text-green' : 'text-fg-dim'">
                 <FileCode :size="18" />
               </div>
               <div class="flex flex-col min-w-0">
-                <span class="text-sm font-bold truncate text-fg">{{ entry.path }}</span>
-                <span class="text-[9px] font-bold uppercase tracking-wider opacity-60">{{ entry.status }}</span>
+                <span class="text-sm font-bold truncate text-fg font-mono">{{ entry.path }}</span>
+                <span class="text-[9px] font-bold uppercase tracking-wider transition-colors font-sans"
+                      :class="{
+                        'text-yellow': entry.status === 'Modified',
+                        'text-green': entry.status === 'New',
+                        'text-red': entry.status === 'Deleted',
+                        'text-aqua': entry.status === 'Renamed',
+                        'opacity-60': !['Modified', 'New', 'Deleted', 'Renamed'].includes(entry.status)
+                      }">{{ entry.status }}</span>
               </div>
             </div>
             
@@ -297,20 +307,21 @@ onMounted(() => {
         </Transition>
         <Transition name="slide-up">
           <div v-if="selectedFileForDiff" 
-               class="fixed bottom-0 left-0 right-0 h-[85vh] bg-bg1 border-t border-border rounded-t-3xl flex flex-col z-50 shadow-2xl overflow-hidden">
+               class="fixed bottom-0 left-0 right-0 h-[85vh] bg-bg1 border-t border-border rounded-t-3xl flex flex-col z-50 shadow-lg overflow-hidden"
+               style="box-shadow: var(--shadow-lg)">
             <div class="w-12 h-1.5 bg-bg3 rounded-full mx-auto my-4 shrink-0" @click="selectedFileForDiff = null"></div>
             
             <div class="px-6 pb-4 flex items-center justify-between gap-4 border-b border-border/50">
               <div class="flex flex-col min-w-0">
-                <h4 class="font-bold text-fg truncate text-sm">{{ selectedFileForDiff }}</h4>
-                <span class="text-[10px] text-fg-dim uppercase tracking-widest font-bold">File Difference</span>
+                <h4 class="font-bold text-fg truncate text-sm font-mono">{{ selectedFileForDiff }}</h4>
+                <span class="text-[10px] text-fg-dim uppercase tracking-widest font-bold font-sans">File Difference</span>
               </div>
-              <button @click="selectedFileForDiff = null" class="p-2 hover:bg-bg3 rounded-full transition-colors">
+              <button @click="selectedFileForDiff = null" class="p-2 hover:bg-bg3 rounded-full transition-colors font-sans">
                 <X :size="24" />
               </button>
             </div>
             
-            <div class="flex-1 overflow-auto bg-bg0 font-mono text-[11px] leading-relaxed p-4">
+            <div class="flex-1 overflow-auto bg-bg0 font-mono text-[11px] leading-relaxed p-4 font-mono">
               <template v-for="(line, i) in diff.split('\n')" :key="i">
                 <div :class="{ 'bg-green/10 text-green': line.startsWith('+'), 'bg-red/10 text-red': line.startsWith('-') }" class="px-2 py-0.5 whitespace-pre">{{ line }}</div>
               </template>

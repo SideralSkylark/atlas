@@ -22,7 +22,7 @@ function notify(msg: { type: "success" | "error"; text: string }) {
 </script>
 
 <template>
-  <div class="h-screen overflow-hidden bg-bg0 text-fg font-mono antialiased
+  <div class="h-screen overflow-hidden bg-bg0 text-fg font-sans antialiased tracking-tight
               pt-[calc(1rem+env(safe-area-inset-top))] 
               pb-[env(safe-area-inset-bottom)]
               pl-[env(safe-area-inset-left)] 
