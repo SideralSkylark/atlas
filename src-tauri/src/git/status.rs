@@ -104,6 +104,20 @@ pub fn unstage_file<R: Runtime>(
 }
 
 #[command]
+pub fn revert_file<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    filepath: String,
+) -> Result<(), String> {
+    let path = repos::repo_path(&app, &repo_id);
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+    let mut checkout = git2::build::CheckoutBuilder::new();
+    checkout.force().path(&filepath);
+    repo.checkout_head(Some(&mut checkout))
+        .map_err(|e| e.to_string())
+}
+
+#[command]
 pub fn get_diff<R: Runtime>(
     app: AppHandle<R>,
     repo_id: String,

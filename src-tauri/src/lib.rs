@@ -21,7 +21,7 @@ use git::{
     clone::clone_repo,
     commit::{commit_changes, get_commit_history},
     remote::{git_pull, git_push},
-    status::{get_diff, get_status, stage_file, unstage_file},
+    status::{get_diff, get_status, stage_file, unstage_file, revert_file},
 };
 
 // Repositories
@@ -55,6 +55,7 @@ pub fn run() {
             get_status,
             stage_file,
             unstage_file,
+            revert_file,
             commit_changes,
             get_diff,
             read_raw_file,

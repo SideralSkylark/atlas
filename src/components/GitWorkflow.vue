@@ -11,13 +11,20 @@ import {
   FileCode,
   GitCommit,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  RotateCcw
 } from "@lucide/vue";
+import { invoke } from "@tauri-apps/api/core";
 import { useGit } from "../composables/useGit";
 import type { RepoInfo } from "../composables/useRepos";
+import DiffView from "./DiffView.vue";
 
 const props = defineProps<{
   repo: RepoInfo;
+}>();
+
+const emit = defineEmits<{
+  (e: "reloadFiles"): void;
 }>();
 
 const {
@@ -45,8 +52,28 @@ const commitMessage = ref("");
 const selectedFileForDiff = ref<string | null>(null);
 const showAuthor = ref(false);
 
+const revertingFile = ref<string | null>(null);
+const confirmRevert = ref<string | null>(null);
+
 const authorName = ref(localStorage.getItem("atlas_author_name") || "Atlas User");
 const authorEmail = ref(localStorage.getItem("atlas_author_email") || "user@atlas.app");
+
+async function onRevert(filepath: string) {
+  revertingFile.value = filepath;
+  try {
+    await invoke('revert_file', { 
+      repoId: props.repo.id, 
+      filepath 
+    });
+    await loadStatus(props.repo.id);
+    emit('reloadFiles');
+  } catch (e) {
+    error.value = String(e);
+  } finally {
+    revertingFile.value = null;
+    confirmRevert.value = null;
+  }
+}
 
 async function onCreateBranch() {
   if (!newBranchName.value) return;
@@ -263,38 +290,68 @@ onMounted(() => {
           <div
             v-for="entry in status"
             :key="entry.path"
-            class="flex items-center justify-between p-3 bg-bg1 border border-border rounded-xl shadow-sm"
+            class="flex items-center justify-between p-3 bg-bg1 border border-border rounded-xl shadow-sm min-h-[64px]"
             :class="{ 'border-green/30 bg-bg1/80': entry.staged }"
             style="box-shadow: var(--shadow-sm), var(--shadow-inset)"
           >
-            <div class="flex items-center gap-3 min-w-0 cursor-pointer" @click="viewDiff(entry.path, entry.staged)">
-              <div :class="entry.staged ? 'text-green' : 'text-fg-dim'">
-                <FileCode :size="18" />
-              </div>
-              <div class="flex flex-col min-w-0">
-                <span class="text-sm font-bold truncate text-fg font-mono">{{ entry.path }}</span>
-                <span class="text-[9px] font-bold uppercase tracking-wider transition-colors font-sans"
-                      :class="{
-                        'text-yellow': entry.status === 'Modified',
-                        'text-green': entry.status === 'New',
-                        'text-red': entry.status === 'Deleted',
-                        'text-aqua': entry.status === 'Renamed',
-                        'opacity-60': !['Modified', 'New', 'Deleted', 'Renamed'].includes(entry.status)
-                      }">{{ entry.status }}</span>
-              </div>
+            <div v-if="revertingFile === entry.path" class="flex items-center justify-center w-full">
+              <Loader2 :size="20" class="animate-spin text-red" />
             </div>
-            
-            <div class="flex items-center gap-1">
-              <button
-                @click="entry.staged ? unstageFile(props.repo.id, entry.path) : stageFile(props.repo.id, entry.path)"
-                class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors cursor-pointer active:scale-95 duration-100"
-                :class="entry.staged ? 'text-fg-dim hover:bg-bg3' : 'text-green hover:bg-green/10'"
-                :title="entry.staged ? 'Unstage' : 'Stage'"
-              >
-                <X v-if="entry.staged" :size="18" />
-                <Plus v-else :size="18" />
-              </button>
-            </div>
+            <template v-else-if="confirmRevert === entry.path">
+              <span class="text-xs text-red font-bold font-sans">Revert to last commit?</span>
+              <div class="flex items-center gap-1">
+                <button
+                  @click="onRevert(entry.path)"
+                  class="px-3 py-2 text-red text-xs font-bold hover:bg-red/10 rounded-lg transition-colors font-sans"
+                >
+                  Yes
+                </button>
+                <button
+                  @click="confirmRevert = null"
+                  class="px-3 py-2 text-fg-dim text-xs hover:bg-bg3 rounded-lg transition-colors font-sans"
+                >
+                  Cancel
+                </button>
+              </div>
+            </template>
+            <template v-else>
+              <div class="flex items-center gap-3 min-w-0 cursor-pointer" @click="viewDiff(entry.path, entry.staged)">
+                <div :class="entry.staged ? 'text-green' : 'text-fg-dim'">
+                  <FileCode :size="18" />
+                </div>
+                <div class="flex flex-col min-w-0">
+                  <span class="text-sm font-bold truncate text-fg font-mono">{{ entry.path }}</span>
+                  <span class="text-[9px] font-bold uppercase tracking-wider transition-colors font-sans"
+                        :class="{
+                          'text-yellow': entry.status === 'Modified',
+                          'text-green': entry.status === 'New',
+                          'text-red': entry.status === 'Deleted',
+                          'text-aqua': entry.status === 'Renamed',
+                          'opacity-60': !['Modified', 'New', 'Deleted', 'Renamed'].includes(entry.status)
+                        }">{{ entry.status }}</span>
+                </div>
+              </div>
+              
+              <div class="flex items-center gap-1">
+                <button
+                  @click="entry.staged ? unstageFile(props.repo.id, entry.path) : stageFile(props.repo.id, entry.path)"
+                  class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors cursor-pointer active:scale-95 duration-100"
+                  :class="entry.staged ? 'text-fg-dim hover:bg-bg3' : 'text-green hover:bg-green/10'"
+                  :title="entry.staged ? 'Unstage' : 'Stage'"
+                >
+                  <X v-if="entry.staged" :size="18" />
+                  <Plus v-else :size="18" />
+                </button>
+                <button
+                  v-if="entry.status !== 'New'"
+                  @click="() => { confirmRevert = entry.path; if ('vibrate' in navigator) navigator.vibrate(30); }"
+                  class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-fg-dim hover:text-red hover:bg-red/5 transition-colors cursor-pointer active:scale-95 duration-100"
+                  title="Revert"
+                >
+                  <RotateCcw :size="16" />
+                </button>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -308,8 +365,9 @@ onMounted(() => {
         </Transition>
         <Transition name="slide-up">
           <div v-if="selectedFileForDiff" 
-               class="fixed bottom-0 left-0 right-0 h-[85vh] bg-bg1 border-t border-border rounded-t-3xl flex flex-col z-50 shadow-lg overflow-hidden"
+               class="fixed bottom-0 left-0 right-0 h-[85vh] bg-bg1 border-t border-border rounded-t-3xl flex flex-col z-50 shadow-lg"
                style="box-shadow: var(--shadow-lg)">
+            <!-- Parent has no overflow-x-hidden to allow DiffView scrolling -->
             <div class="w-12 h-1.5 bg-bg3 rounded-full mx-auto my-4 shrink-0" @click="selectedFileForDiff = null"></div>
             
             <div class="px-6 pb-4 flex items-center justify-between gap-4 border-b border-border/50">
@@ -317,15 +375,13 @@ onMounted(() => {
                 <h4 class="font-bold text-fg truncate text-sm font-mono">{{ selectedFileForDiff }}</h4>
                 <span class="text-[10px] text-fg-dim uppercase tracking-widest font-bold font-sans">File Difference</span>
               </div>
-              <button @click="selectedFileForDiff = null" class="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-bg3 rounded-full transition-all active:scale-95 duration-100">
+              <button @click="selectedFileForDiff = null" class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-fg hover:bg-bg3 rounded-full transition-all active:scale-95 duration-100">
                 <X :size="24" />
               </button>
             </div>
             
-            <div class="flex-1 overflow-auto bg-bg0 font-mono text-[11px] leading-relaxed p-4 font-mono">
-              <template v-for="(line, i) in diff.split('\n')" :key="i">
-                <div :class="{ 'bg-green/10 text-green': line.startsWith('+'), 'bg-red/10 text-red': line.startsWith('-') }" class="px-2 py-0.5 whitespace-pre">{{ line }}</div>
-              </template>
+            <div class="flex-1 overflow-hidden flex flex-col">
+              <DiffView :diff="diff" maxHeight="100%" />
             </div>
           </div>
         </Transition>

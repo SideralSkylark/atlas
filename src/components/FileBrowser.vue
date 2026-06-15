@@ -13,6 +13,7 @@ import {
   Edit2,
   RefreshCcw
 } from "@lucide/vue";
+import { invoke } from "@tauri-apps/api/core";
 import { onMounted, watch, computed, ref, onUnmounted } from "vue";
 import { useFileSystem } from "../composables/useFileSystem";
 import { useRepos } from "../composables/useRepos";
@@ -20,6 +21,12 @@ import type { RepoInfo } from "../composables/useRepos";
 import FileContent from "./FileContent.vue";
 import GitWorkflow from "./GitWorkflow.vue";
 import Editor from "./Editor.vue";
+
+interface StatusEntry {
+  path: string;
+  status: string;
+  staged: boolean;
+}
 
 const props = defineProps<{
   repo: RepoInfo;
@@ -37,7 +44,7 @@ const {
   currentFilePath,
   renderedFile,
   loading,
-  loadFiles,
+  loadFiles: fsLoadFiles,
   searchFiles,
   renderFile,
   openPath,
@@ -52,6 +59,23 @@ const showSearch = ref(false);
 const searchQuery = ref("");
 const editingPath = ref<string | null>(null);
 const editorRef = ref<any>(null);
+
+const fileStatuses = ref<StatusEntry[]>([]);
+
+const statusMap = computed(() => {
+  const map = new Map<string, string>();
+  fileStatuses.value.forEach(s => map.set(s.path, s.status));
+  return map;
+});
+
+async function loadFiles(repoId: string) {
+  await fsLoadFiles(repoId);
+  try {
+    fileStatuses.value = await invoke<StatusEntry[]>("get_status", { repoId });
+  } catch (e) {
+    console.error("Failed to load git status:", e);
+  }
+}
 
 defineExpose({
   editingPath,
@@ -369,7 +393,7 @@ function handleEdit() {
 
     <!-- Git View -->
     <div v-if="view === 'git'" class="flex-1 overflow-y-auto px-6 -mx-6">
-      <GitWorkflow :repo="repo" />
+      <GitWorkflow :repo="repo" @reload-files="loadFiles(repo.id)" />
     </div>
 
     <!-- Files View -->
@@ -439,6 +463,17 @@ function handleEdit() {
             <FileText v-else :size="20" />
           </div>
           <span class="truncate font-medium text-sm font-sans font-medium">{{ entry.name }}</span>
+          <div 
+            v-if="statusMap.get(currentRelativePath ? `${currentRelativePath}/${entry.name}` : entry.name)"
+            class="w-1.5 h-1.5 rounded-full shrink-0 ml-auto"
+            :class="{
+              'bg-yellow': statusMap.get(currentRelativePath ? `${currentRelativePath}/${entry.name}` : entry.name) === 'Modified',
+              'bg-green': statusMap.get(currentRelativePath ? `${currentRelativePath}/${entry.name}` : entry.name) === 'New',
+              'bg-red': statusMap.get(currentRelativePath ? `${currentRelativePath}/${entry.name}` : entry.name) === 'Deleted',
+              'bg-aqua': fileStatuses.find(s => s.path === (currentRelativePath ? `${currentRelativePath}/${entry.name}` : entry.name))?.staged,
+            }"
+            :title="statusMap.get(currentRelativePath ? `${currentRelativePath}/${entry.name}` : entry.name)"
+          />
         </div>
         
         <div v-if="files.length === 0" class="flex flex-col items-center justify-center py-16 text-fg-dim opacity-30">
