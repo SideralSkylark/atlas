@@ -140,3 +140,6 @@ no risk of other apps modifying repo state.
 * **Open source**: MIT or Apache 2.0 license. F-Droid compatible.
 
 --- 
+
+## Todo
+- Better scroll bar placement across all interfaces
