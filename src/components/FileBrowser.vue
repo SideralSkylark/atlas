@@ -13,7 +13,7 @@ import {
   Edit2,
   RefreshCcw
 } from "@lucide/vue";
-import { onMounted, watch, computed, ref } from "vue";
+import { onMounted, watch, computed, ref, onUnmounted } from "vue";
 import { useFileSystem } from "../composables/useFileSystem";
 import { useRepos } from "../composables/useRepos";
 import type { RepoInfo } from "../composables/useRepos";
@@ -51,6 +51,13 @@ const view = ref<"files" | "git">("files");
 const showSearch = ref(false);
 const searchQuery = ref("");
 const editingPath = ref<string | null>(null);
+
+defineExpose({
+  editingPath,
+  renderedFile,
+  currentRelativePath,
+  handleBack
+});
 
 // Gestures State
 const touchStartX = ref(0);
@@ -193,7 +200,12 @@ watch(searchQuery, (newVal) => {
   }, 300);
 });
 
-onMounted(() => loadFiles(props.repo.id));
+onMounted(async () => {
+  await loadFiles(props.repo.id);
+});
+
+onUnmounted(() => {
+});
 
 watch(() => props.repo.id, () => loadFiles(props.repo.id));
 
