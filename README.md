@@ -143,3 +143,5 @@ no risk of other apps modifying repo state.
 
 ## Todo
 - Better scroll bar placement across all interfaces
+- git workflow should also allow pushing commits to remote
+- git commit amend support
