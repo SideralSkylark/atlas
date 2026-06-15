@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
+import { listen } from "@tauri-apps/api/event";
 import RepoList from "./components/RepoList.vue";
 import FileBrowser from "./components/FileBrowser.vue";
 import ActivityView from "./components/ActivityView.vue";
@@ -24,6 +25,44 @@ function closeRepo() {
 function notify(msg: { type: "success" | "error"; text: string }) {
   toastMessage.value = msg;
 }
+
+onMounted(async () => {
+  await listen("backButton", () => {
+    // 1. If the Editor overlay is open
+    if (fileBrowserRef.value?.editingPath) {
+      if (fileBrowserRef.value.editorRef?.isDirty) {
+        // Editor will handle showing the unsaved changes dialog via its own listener
+        return;
+      }
+      fileBrowserRef.value.editingPath = null;
+      return;
+    }
+
+    // 2. Else if a file is being viewed
+    if (fileBrowserRef.value?.renderedFile) {
+      fileBrowserRef.value.handleBack();
+      return;
+    }
+
+    // 3. Else if inside a subdirectory
+    if (selectedRepo.value && fileBrowserRef.value?.currentRelativePath !== "") {
+      fileBrowserRef.value.handleBack();
+      return;
+    }
+
+    // 4. Else if on a non-repos tab
+    if (currentView.value !== 'repos') {
+      currentView.value = 'repos';
+      return;
+    }
+
+    // 5. Else if selectedRepo is set but at root
+    if (selectedRepo.value) {
+      closeRepo();
+      return;
+    }
+  });
+});
 </script>
 
 <template>

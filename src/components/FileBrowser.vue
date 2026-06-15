@@ -51,12 +51,14 @@ const view = ref<"files" | "git">("files");
 const showSearch = ref(false);
 const searchQuery = ref("");
 const editingPath = ref<string | null>(null);
+const editorRef = ref<any>(null);
 
 defineExpose({
   editingPath,
   renderedFile,
   currentRelativePath,
-  handleBack
+  handleBack,
+  editorRef
 });
 
 // Gestures State
@@ -225,6 +227,7 @@ function handleEdit() {
     <!-- Editor Overlay -->
     <Editor 
       v-if="editingPath" 
+      ref="editorRef"
       :repo="repo" 
       :relative-path="editingPath" 
       @close="editingPath = null" 

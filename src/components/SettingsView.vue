@@ -11,7 +11,7 @@ import CredentialsManager from "./CredentialsManager.vue";
       </p>
     </div>
     
-    <div class="bg-bg1 border border-border rounded-xl p-6 shadow-sm">
+    <div class="space-y-6">
       <CredentialsManager />
     </div>
   </div>
