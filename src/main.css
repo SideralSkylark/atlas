@@ -48,3 +48,49 @@
 .font-mono {
   line-height: 1.6;
 }
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-bg3);
+  border-radius: 10px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-bg3) transparent;
+}
+
+/* More Content Fade Indicator */
+.content-fade-bottom {
+  position: relative;
+}
+
+.content-fade-bottom::after {
+  content: "";
+  position: fixed;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(to top, var(--color-bg0), transparent);
+  pointer-events: none;
+  z-index: 25;
+  opacity: 0.8;
+}

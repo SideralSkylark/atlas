@@ -333,7 +333,7 @@ function handleEdit() {
           <span class="opacity-40 truncate">{{ currentRelativePath ? currentRelativePath + '/' : '' }}</span>
           <span class="text-fg font-bold truncate">{{ currentFilePath?.split('/').pop() }}</span>
         </div>
-        <div v-else class="flex items-center gap-1 px-3 py-1.5 bg-bg1 border border-border rounded-full text-[11px] font-mono text-fg-dim overflow-x-auto no-scrollbar w-full shadow-inner font-mono">
+        <div v-else class="flex items-center gap-1 px-3 py-1.5 bg-bg1 border border-border rounded-full text-[11px] font-mono text-fg-dim overflow-x-auto w-full shadow-inner font-mono">
           <template v-if="breadcrumbs.length > 2">
             <button @click="navigateToBreadcrumb(0)" class="hover:text-yellow transition-colors cursor-pointer min-h-[30px] px-1">…</button>
             <span class="text-border">/</span>
@@ -448,14 +448,6 @@ function handleEdit() {
 </template>
 
 <style scoped>
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
 .slide-enter-active,
 .slide-leave-active {
   transition: all 0.3s ease;

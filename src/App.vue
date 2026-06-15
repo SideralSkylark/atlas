@@ -32,7 +32,10 @@ function notify(msg: { type: "success" | "error"; text: string }) {
               pb-[env(safe-area-inset-bottom)]
               pl-[env(safe-area-inset-left)] 
               pr-[env(safe-area-inset-right)]">
-    <div class="max-w-2xl mx-auto h-full overflow-y-auto px-6 pb-[calc(64px+env(safe-area-inset-bottom))]">
+    <div 
+      class="max-w-2xl mx-auto h-full overflow-y-auto px-6 pb-[calc(64px+env(safe-area-inset-bottom))]"
+      :class="{ 'content-fade-bottom': !(selectedRepo && fileBrowserRef?.renderedFile) && !fileBrowserRef?.editingPath }"
+    >
       <Transition
         name="tab-fade"
         mode="out-in"
