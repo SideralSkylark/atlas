@@ -8,7 +8,9 @@ import SettingsView from "./components/SettingsView.vue";
 import BottomNav from "./components/BottomNav.vue";
 import Toast from "./components/Toast.vue";
 import type { RepoInfo } from "./composables/useRepos";
+import { useTheme } from "./composables/useTheme";
 
+const { theme, appearance } = useTheme();
 const currentView = ref<'repos' | 'activity' | 'settings'>('repos');
 const selectedRepo = ref<RepoInfo | null>(null);
 const toastMessage = ref<{ type: "success" | "error"; text: string } | null>(null);

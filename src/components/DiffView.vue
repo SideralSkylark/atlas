@@ -36,12 +36,12 @@ function getLineStyle(type: 'added' | 'removed' | 'header' | 'context') {
   switch (type) {
     case 'added':
       return {
-        background: 'rgba(var(--color-green, 167, 192, 128), 0.12)',
+        background: 'color-mix(in srgb, var(--color-green) 12%, transparent)',
         class: 'text-green border-l-2 border-green'
       };
     case 'removed':
       return {
-        background: 'rgba(var(--color-red, 230, 126, 128), 0.12)',
+        background: 'color-mix(in srgb, var(--color-red) 12%, transparent)',
         class: 'text-red border-l-2 border-red'
       };
     case 'header':
