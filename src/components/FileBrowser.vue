@@ -62,11 +62,52 @@ const editorRef = ref<any>(null);
 
 const fileStatuses = ref<StatusEntry[]>([]);
 
-const statusMap = computed(() => {
-  const map = new Map<string, string>();
-  fileStatuses.value.forEach(s => map.set(s.path, s.status));
+type FileStatus = 'staged' | 'Modified' | 'New' | 'Deleted' | 'Renamed' | null
+
+function entryFullPath(name: string): string {
+  return currentRelativePath.value 
+    ? `${currentRelativePath.value}/${name}` 
+    : name;
+}
+
+function getFileStatus(fullPath: string): FileStatus {
+  const entry = fileStatuses.value.find(s => s.path === fullPath);
+  if (!entry) return null;
+  if (entry.staged) return 'staged';
+  return entry.status as FileStatus;
+}
+
+const dirStatuses = computed(() => {
+  const map = new Map<string, FileStatus>();
+  
+  for (const entry of fileStatuses.value) {
+    const parts = entry.path.split('/');
+    // Walk up every directory segment of this file's path
+    for (let i = 1; i < parts.length; i++) {
+      const dirPath = parts.slice(0, i).join('/');
+      const existing = map.get(dirPath);
+      // Priority: staged > Modified > New > Deleted > Renamed
+      const incoming: FileStatus = entry.staged ? 'staged' : entry.status as FileStatus;
+      if (!existing) {
+        map.set(dirPath, incoming);
+      } else {
+        // Only upgrade priority, never downgrade
+        const priority = ['Renamed', 'Deleted', 'New', 'Modified', 'staged'];
+        if (priority.indexOf(incoming) > priority.indexOf(existing)) {
+          map.set(dirPath, incoming);
+        }
+      }
+    }
+  }
+  
   return map;
-});
+})
+
+function getEntryStatus(name: string, isDir: boolean): FileStatus {
+  const fullPath = entryFullPath(name);
+  if (isDir) return dirStatuses.value.get(fullPath) ?? null;
+  return getFileStatus(fullPath);
+}
 
 async function loadFiles(repoId: string) {
   await fsLoadFiles(repoId);
@@ -463,16 +504,17 @@ function handleEdit() {
             <FileText v-else :size="20" />
           </div>
           <span class="truncate font-medium text-sm font-sans font-medium">{{ entry.name }}</span>
-          <div 
-            v-if="statusMap.get(currentRelativePath ? `${currentRelativePath}/${entry.name}` : entry.name)"
+          <div
+            v-if="getEntryStatus(entry.name, entry.is_dir)"
             class="w-1.5 h-1.5 rounded-full shrink-0 ml-auto"
             :class="{
-              'bg-yellow': statusMap.get(currentRelativePath ? `${currentRelativePath}/${entry.name}` : entry.name) === 'Modified',
-              'bg-green': statusMap.get(currentRelativePath ? `${currentRelativePath}/${entry.name}` : entry.name) === 'New',
-              'bg-red': statusMap.get(currentRelativePath ? `${currentRelativePath}/${entry.name}` : entry.name) === 'Deleted',
-              'bg-aqua': fileStatuses.find(s => s.path === (currentRelativePath ? `${currentRelativePath}/${entry.name}` : entry.name))?.staged,
+              'bg-aqua':   getEntryStatus(entry.name, entry.is_dir) === 'staged',
+              'bg-yellow': getEntryStatus(entry.name, entry.is_dir) === 'Modified',
+              'bg-green':  getEntryStatus(entry.name, entry.is_dir) === 'New',
+              'bg-red':    getEntryStatus(entry.name, entry.is_dir) === 'Deleted',
+              'bg-orange': getEntryStatus(entry.name, entry.is_dir) === 'Renamed',
             }"
-            :title="statusMap.get(currentRelativePath ? `${currentRelativePath}/${entry.name}` : entry.name)"
+            :title="getEntryStatus(entry.name, entry.is_dir) ?? ''"
           />
         </div>
         
