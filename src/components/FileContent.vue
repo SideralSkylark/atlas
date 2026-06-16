@@ -49,8 +49,8 @@ async function copyContent(content: string) {
         </div>
 
         <div>
-          <div v-if="file.file_type === 'code'" v-html="file.content" class="p-4 text-sm font-mono leading-relaxed overflow-x-hidden max-w-full syntect-highlight"></div>
-          <div v-else-if="file.file_type === 'plain'" class="max-h-[70vh] overflow-y-auto custom-scrollbar p-4">
+          <div v-if="file.file_type === 'code'" v-html="file.content" class="p-6 text-sm font-mono leading-relaxed overflow-x-hidden max-w-full syntect-highlight"></div>
+          <div v-else-if="file.file_type === 'plain'" class="max-h-[70vh] overflow-y-auto p-6">
             <pre class="text-sm text-fg leading-relaxed font-mono whitespace-pre-wrap break-words max-w-full overflow-x-hidden">{{ file.content }}</pre>
           </div>
           <div v-else-if="file.file_type === 'html'" v-html="file.content" class="bg-white text-black p-2 rounded min-h-[200px] max-w-full overflow-x-hidden"></div>
@@ -78,7 +78,7 @@ async function copyContent(content: string) {
 .prose-custom ul { @apply list-disc list-inside mb-4 ml-2; }
 .prose-custom ol { @apply list-decimal list-inside mb-4 ml-2; }
 .prose-custom code { @apply px-1.5 py-0.5 bg-bg3 rounded text-aqua font-mono text-xs; }
-.prose-custom pre { @apply p-4 bg-bg0 rounded-lg overflow-x-auto max-w-full mb-4 border border-border; }
+.prose-custom pre { @apply p-6 bg-bg0 rounded-lg overflow-x-auto max-w-full mb-4 border border-border; }
 .prose-custom pre code { @apply p-0 bg-transparent text-fg; }
 .prose-custom blockquote { @apply border-l-4 border-green pl-4 italic text-fg-dim mb-4; }
 .prose-custom a { @apply text-aqua hover:underline; }
@@ -95,19 +95,5 @@ async function copyContent(content: string) {
 
 .syntect-highlight {
   font-family: inherit;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-bg3);
-  border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--color-border);
 }
 </style>

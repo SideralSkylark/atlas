@@ -72,6 +72,10 @@
   background-clip: padding-box;
 }
 
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-bg3) transparent;

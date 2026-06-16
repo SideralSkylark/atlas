@@ -59,7 +59,7 @@ function getLineStyle(type: 'added' | 'removed' | 'header' | 'context') {
 <template>
   <!-- NOTE: Ensure no parent container has overflow-x-hidden for optimal horizontal scrolling -->
   <div 
-    class="font-mono text-[11px] leading-relaxed overflow-x-auto overflow-y-auto bg-bg0 rounded-b-xl"
+    class="font-mono text-[11px] leading-relaxed overflow-x-auto overflow-y-auto bg-bg0 p-6"
     :style="{ maxHeight: props.maxHeight }"
   >
     <div 

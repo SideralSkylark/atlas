@@ -225,7 +225,7 @@ onMounted(() => {
     <div class="flex-1 relative bg-bg1 border border-border rounded-xl overflow-hidden">
       <textarea
         v-model="content"
-        class="w-full h-full p-4 bg-transparent outline-none text-sm font-mono resize-none leading-relaxed"
+        class="w-full h-full p-6 bg-transparent outline-none text-sm font-mono resize-none leading-relaxed"
         spellcheck="false"
       ></textarea>
     </div>
@@ -239,7 +239,7 @@ onMounted(() => {
             <button @click="showCommitDialog = false" class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-fg font-sans active:scale-95 duration-100 transition-all"><X :size="20" /></button>
           </div>
           
-          <div v-if="currentDiff" class="rounded-lg border border-border mb-3">
+          <div v-if="currentDiff" class="rounded-lg border border-border mb-3 overflow-hidden">
             <div class="px-3 py-1.5 bg-bg2 border-b border-border text-[10px] uppercase tracking-widest text-fg-dim font-bold">
               Changes to commit
             </div>
