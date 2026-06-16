@@ -26,6 +26,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "close"): void;
+  (e: "save"): void;
   (e: "notify", msg: { type: "success" | "error"; text: string }): void;
 }>();
 
@@ -67,6 +68,7 @@ async function onSave() {
     originalContent.value = content.value;
     savedIndicator.value = true;
     setTimeout(() => savedIndicator.value = false, 2000);
+    emit("save");
     emit("notify", { type: "success", text: "File saved." });
     
     if (pendingAction.value === 'commit') {
@@ -128,6 +130,7 @@ async function onCommit() {
   try {
     await commitChanges(props.repo.id, commitMessage.value, name, email);
     commitSuccess.value = true;
+    emit("save");
     
     setTimeout(() => {
       commitSuccess.value = false;

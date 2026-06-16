@@ -279,6 +279,18 @@ watch(() => props.repo.id, () => loadFiles(props.repo.id));
 function handleEdit() {
   editingPath.value = currentFilePath.value;
 }
+
+async function handleSave() {
+  if (editingPath.value) {
+    const fileName = editingPath.value.split('/').pop()!;
+    await renderFile(props.repo.id, fileName);
+    try {
+      fileStatuses.value = await invoke<StatusEntry[]>("get_status", { repoId: props.repo.id });
+    } catch (e) {
+      console.error("Failed to load git status:", e);
+    }
+  }
+}
 </script>
 
 <template>
@@ -296,6 +308,7 @@ function handleEdit() {
       :repo="repo" 
       :relative-path="editingPath" 
       @close="editingPath = null" 
+      @save="handleSave"
       @notify="(msg) => emit('notify', msg)"
     />
 
@@ -330,12 +343,7 @@ function handleEdit() {
 
         <!-- Center: Contextual Title or Switcher -->
         <div class="flex-1 flex justify-center min-w-0 px-2">
-          <div v-if="renderedFile" class="flex justify-center">
-            <div class="px-3 py-1 bg-bg3 text-aqua text-[10px] font-bold uppercase tracking-widest rounded-full border border-border/50 font-sans shadow-sm">
-              {{ renderedFile.file_type }}
-            </div>
-          </div>
-          <div v-else class="flex bg-bg1 border border-border rounded-lg p-0.5 shadow-sm font-sans">
+          <div v-if="!renderedFile" class="flex bg-bg1 border border-border rounded-lg p-0.5 shadow-sm font-sans">
             <button
               @click="view = 'files'"
               class="min-h-[40px] px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95 duration-100 cursor-pointer font-sans"
@@ -396,7 +404,7 @@ function handleEdit() {
       </div>
 
       <!-- Row 2: Breadcrumbs / Meta -->
-      <div v-if="view === 'files'" class="flex items-center">
+      <div v-if="view === 'files'" class="flex items-center -mx-6 px-6">
         <div v-if="renderedFile" class="flex items-center gap-1.5 px-4 py-2 bg-bg1 border border-border rounded-full text-[11px] font-mono text-fg-dim w-full shadow-inner overflow-hidden">
           <span class="opacity-40 truncate">{{ currentRelativePath ? currentRelativePath + '/' : '' }}</span>
           <span class="text-fg font-bold truncate">{{ currentFilePath?.split('/').pop() }}</span>

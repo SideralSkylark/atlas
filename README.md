@@ -87,7 +87,7 @@ devices in your workflow don't need Atlas. They just need Git.
 
 ### Phase 7 — Polish & Release
 
-* [ ] Everforest Hard Dark theme
+* [x] Everforest Hard Dark theme
 * [ ] Proper mobile UI (touch targets, gestures)
 * [ ] Performance pass
 * [ ] F-Droid metadata and build recipe
@@ -142,6 +142,29 @@ no risk of other apps modifying repo state.
 --- 
 
 ## Todo
-- git workflow should also allow pushing commits to remote
-- git commit amend support
-- add file or dir remove them as well
+
+### High Priority
+- [ ] **Conflict Resolution UI**: A dedicated view to handle merge conflicts within the app.
+- [ ] **SSH Support**: Implementation of Phase 6 (Key generation, import, and SSH-based remotes).
+- [ ] **File Management**: Create, delete, and rename files/directories from the file browser.
+- [ ] **Branch Management**: Delete branches (local and remote) and merge support.
+
+### Git Enhancements
+- [ ] **Commit Amending**: Support for `git commit --amend`.
+- [ ] **Visual History Graph**: A canvas or SVG-based graph to visualize branch merges and history.
+- [ ] **Blame View**: Show who last modified each line in the file viewer.
+
+### Editor & Viewer
+- [ ] **Search in Files**: Global "grep" functionality to find text across the entire repository.
+- [ ] **Image & PDF Support**: View non-text assets directly in the file viewer.
+
+### UI/UX & Polish
+- [ ] **Custom Themes**: Support for different color schemes beyond Everforest.
+- [ ] **App Shortcuts**: Long-press app icon shortcuts to jump to recent repositories.
+- [ ] **Refined Gestures**: Enhanced swipe-to-action patterns for common git tasks.
+- [ ] **Activity View**: Populate the dedicated Activity tab with a global feed of recent git events across all repos.
+
+### Reliability
+- [ ] **Automated Testing**: Unit tests for Rust git logic and E2E tests for the Vue frontend.
+- [ ] **Error Boundaries**: Improved global error handling and user-friendly recovery paths.
+- [ ] **Performance Pass**: Optimize large repository loading and diff rendering.

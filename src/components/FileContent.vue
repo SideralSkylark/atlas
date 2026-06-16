@@ -93,54 +93,72 @@ async function copyContent(content: string) {
 <template>
   <div class="max-w-full overflow-hidden">
     <div class="bg-bg1 border border-border rounded-xl overflow-hidden shadow-sm">
-      <!-- Code / Plain / HTML -->
-      <div v-if="file.file_type === 'code' || file.file_type === 'plain' || file.file_type === 'html'" class="relative bg-bg0">
-        <!-- Toggle and Fullscreen Actions for HTML files -->
-        <div 
-          v-if="file.file_type === 'html'"
-          class="absolute right-4 top-4 z-10 flex items-center gap-2"
-        >
-          <button
-            v-if="htmlViewMode === 'preview'"
-            @click="isFullscreen = true"
-            class="p-2 bg-bg1 border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 transition-all cursor-pointer shadow-md"
-            title="Full screen preview"
+      <!-- Unified Toolbar -->
+      <div class="flex items-center justify-between px-4 py-2 bg-bg2 border-b border-border min-h-[44px]">
+        <!-- Left: mode/context controls -->
+        <div class="flex items-center gap-2">
+          <!-- HTML toggle — only for html files -->
+          <div 
+            v-if="file.file_type === 'html'"
+            class="flex bg-bg3 border border-border rounded-lg overflow-hidden divide-x divide-border"
           >
-            <Maximize2 :size="16" />
-          </button>
-
-          <div class="flex bg-bg1 border border-border rounded-lg overflow-hidden divide-x divide-border shadow-md">
             <button
               @click="htmlViewMode = 'code'"
-              class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer font-sans"
-              :class="htmlViewMode === 'code' ? 'bg-bg3 text-fg' : 'text-fg-dim hover:text-fg'"
+              class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer font-sans"
+              :class="htmlViewMode === 'code' ? 'bg-bg1 text-fg shadow-sm' : 'text-fg-dim hover:text-fg'"
             >
               Code
             </button>
             <button
               @click="htmlViewMode = 'preview'"
-              class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer font-sans"
-              :class="htmlViewMode === 'preview' ? 'bg-bg3 text-fg' : 'text-fg-dim hover:text-fg'"
+              class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer font-sans"
+              :class="htmlViewMode === 'preview' ? 'bg-bg1 text-fg shadow-sm' : 'text-fg-dim hover:text-fg'"
             >
               Preview
             </button>
           </div>
+
+          <!-- File type badge — for non-html files -->
+          <div 
+            v-else
+            class="px-2 py-1 bg-bg3 border border-border/50 rounded-md text-[9px] font-bold uppercase tracking-widest font-sans"
+            :class="{
+              'text-aqua':   file.file_type === 'code',
+              'text-fg-dim': file.file_type === 'plain',
+              'text-yellow': file.file_type === 'markdown',
+            }"
+          >
+            {{ file.file_type }}
+          </div>
         </div>
 
-        <!-- Copy button -->
-        <div v-if="file.file_type === 'code' || (file.file_type === 'html' && htmlViewMode === 'code')" 
-             class="absolute top-4 z-10"
-             :class="file.file_type === 'html' ? 'right-40' : 'right-4'">
+        <!-- Right: contextual actions -->
+        <div class="flex items-center gap-2">
+          <!-- Copy button: code files always, html only in code mode -->
           <button
+            v-if="file.file_type === 'code' || (file.file_type === 'html' && htmlViewMode === 'code')"
             @click="copyContent(file.content)"
-            class="p-2 bg-bg1/80 backdrop-blur-md border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim transition-all active:scale-95 cursor-pointer shadow-lg"
+            class="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-fg-dim hover:text-fg hover:bg-bg3 active:scale-95 transition-all cursor-pointer"
             :title="copied ? 'Copied!' : 'Copy to clipboard'"
           >
             <ClipboardCheck v-if="copied" :size="16" class="text-green" />
             <Clipboard v-else :size="16" />
           </button>
-        </div>
 
+          <!-- Fullscreen button: html preview mode only -->
+          <button
+            v-if="file.file_type === 'html' && htmlViewMode === 'preview'"
+            @click="isFullscreen = true"
+            class="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-fg-dim hover:text-fg hover:bg-bg3 active:scale-95 transition-all cursor-pointer"
+            title="Full screen preview"
+          >
+            <Maximize2 :size="16" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Code / Plain / HTML -->
+      <div v-if="file.file_type === 'code' || file.file_type === 'plain' || file.file_type === 'html'" class="bg-bg0">
         <div>
           <div v-if="file.file_type === 'code'" v-html="file.content" class="p-6 text-sm font-mono leading-relaxed overflow-x-hidden max-w-full syntect-highlight"></div>
           <div v-else-if="file.file_type === 'plain'" class="max-h-[70vh] overflow-y-auto p-6">
