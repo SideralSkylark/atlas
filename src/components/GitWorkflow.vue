@@ -12,7 +12,8 @@ import {
   GitCommit,
   ChevronRight,
   ChevronDown,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from "@lucide/vue";
 import { invoke } from "@tauri-apps/api/core";
 import { useGit } from "../composables/useGit";
@@ -37,6 +38,7 @@ const {
   loadBranches,
   createBranch,
   switchBranch,
+  deleteBranch,
   loadHistory,
   loadStatus,
   stageFile,
@@ -90,6 +92,15 @@ async function onSwitchBranch(name: string) {
     loadStatus(props.repo.id),
     loadHistory(props.repo.id)
   ]);
+}
+
+const branchToDelete = ref<{ name: string; is_remote: boolean } | null>(null);
+
+async function onDeleteBranch(branch: { name: string; is_remote: boolean }) {
+  const success = await deleteBranch(props.repo.id, branch.name, branch.is_remote);
+  if (success) {
+    branchToDelete.value = null;
+  }
 }
 
 async function onCommit() {
@@ -179,24 +190,54 @@ onMounted(() => {
         <div
           v-for="branch in branches"
           :key="branch.name"
-          class="flex items-center justify-between p-3 bg-bg1 border border-border rounded-lg shadow-sm"
+          class="flex items-center justify-between p-3 bg-bg1 border border-border rounded-lg shadow-sm min-h-[64px]"
           :class="{ 'border-yellow': branch.is_current }"
           style="box-shadow: var(--shadow-sm), var(--shadow-inset)"
         >
-          <div class="flex items-center gap-3">
-            <GitBranch :size="18" :class="branch.is_current ? 'text-yellow' : 'text-fg-dim'" />
-            <span :class="{ 'font-bold text-yellow': branch.is_current }" class="text-sm font-mono">{{ branch.name }}</span>
-            <span v-if="branch.is_remote" class="text-[9px] px-1.5 py-0.5 bg-bg2 rounded text-fg-dim uppercase tracking-wider font-sans">Remote</span>
-          </div>
-          <button
-            v-if="!branch.is_current"
-            @click="onSwitchBranch(branch.name)"
-            class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-fg active:scale-95 duration-100 transition-all cursor-pointer"
-            title="Switch to branch"
-          >
-            <ArrowLeftRight :size="16" />
-          </button>
-          <Check v-else :size="16" class="text-yellow" />
+          <template v-if="branchToDelete?.name === branch.name">
+            <div class="flex flex-col min-w-0 font-sans">
+              <span class="text-xs text-red font-bold">Delete {{ branch.is_remote ? 'remote' : 'local' }} branch?</span>
+              <span class="text-[10px] text-fg-dim truncate max-w-[200px] font-mono mt-0.5">{{ branch.name }}</span>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                @click="onDeleteBranch(branch)"
+                class="px-3 py-2 text-red text-xs font-bold hover:bg-red/10 rounded-lg transition-colors cursor-pointer active:scale-95 duration-100 font-sans"
+              >
+                Yes
+              </button>
+              <button
+                @click="branchToDelete = null"
+                class="px-3 py-2 text-fg-dim text-xs hover:bg-bg3 rounded-lg transition-colors cursor-pointer active:scale-95 duration-100 font-sans"
+              >
+                Cancel
+              </button>
+            </div>
+          </template>
+          <template v-else>
+            <div class="flex items-center gap-3 min-w-0">
+              <GitBranch :size="18" :class="branch.is_current ? 'text-yellow' : 'text-fg-dim'" />
+              <span :class="{ 'font-bold text-yellow': branch.is_current }" class="text-sm font-mono truncate">{{ branch.name }}</span>
+              <span v-if="branch.is_remote" class="text-[9px] px-1.5 py-0.5 bg-bg2 rounded text-fg-dim uppercase tracking-wider font-sans shrink-0">Remote</span>
+            </div>
+            <div v-if="!branch.is_current" class="flex items-center gap-1 shrink-0">
+              <button
+                @click="onSwitchBranch(branch.name)"
+                class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-fg active:scale-95 duration-100 transition-all cursor-pointer"
+                title="Switch to branch"
+              >
+                <ArrowLeftRight :size="16" />
+              </button>
+              <button
+                @click="branchToDelete = branch"
+                class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-red active:scale-95 duration-100 transition-all cursor-pointer"
+                title="Delete branch"
+              >
+                <Trash2 :size="16" />
+              </button>
+            </div>
+            <Check v-else :size="16" class="text-yellow shrink-0" />
+          </template>
         </div>
       </div>
     </div>

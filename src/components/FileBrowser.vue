@@ -803,7 +803,6 @@ async function handleDelete() {
       <button
         @click="showSpeedDial = !showSpeedDial"
         class="w-12 h-12 rounded-full bg-yellow text-bg0 flex items-center justify-center shadow-lg active:scale-95 duration-150 transition-all cursor-pointer relative"
-        :class="{ 'bg-bg3 text-fg border border-border': showSpeedDial }"
         style="box-shadow: var(--shadow-lg), var(--shadow-inset)"
         title="Add New..."
       >

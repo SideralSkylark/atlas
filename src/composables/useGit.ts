@@ -124,6 +124,20 @@ export function useGit() {
     }
   }
 
+  async function deleteBranch(repoId: string, branchName: string, isRemote: boolean) {
+    loading.value = true;
+    try {
+      await invoke("delete_branch", { repoId, branchName, isRemote });
+      await loadBranches(repoId);
+      return true;
+    } catch (e) {
+      error.value = String(e);
+      return false;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   return {
     branches,
     history,
@@ -134,6 +148,7 @@ export function useGit() {
     loadBranches,
     createBranch,
     switchBranch,
+    deleteBranch,
     loadHistory,
     loadStatus,
     stageFile,
