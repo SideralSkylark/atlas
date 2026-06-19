@@ -13,7 +13,7 @@ pub mod state;
 use credentials::{delete_pat, get_pats, save_pat};
 
 // Files
-use files::{list_files, read_raw_file, render_file, search_files, write_file};
+use files::{list_files, read_raw_file, render_file, search_files, write_file, create_file, create_directory, delete_item};
 
 // Git
 use git::{
@@ -66,7 +66,10 @@ pub fn run() {
             get_pats,
             delete_pat,
             git_pull,
-            git_push
+            git_push,
+            create_file,
+            create_directory,
+            delete_item
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { 
   ChevronLeft, 
-  ChevronRight, 
   Download, 
   Upload, 
   Folder, 
@@ -9,9 +8,13 @@ import {
   Loader2,
   Home,
   Search,
-  GitBranch,
   Edit2,
-  RefreshCcw
+  RefreshCcw,
+  FilePlus,
+  FolderPlus,
+  Trash2,
+  X,
+  Plus
 } from "@lucide/vue";
 import { invoke } from "@tauri-apps/api/core";
 import { onMounted, watch, computed, ref, onUnmounted } from "vue";
@@ -44,12 +47,16 @@ const {
   currentFilePath,
   renderedFile,
   loading,
+  error,
   loadFiles: fsLoadFiles,
   searchFiles,
   renderFile,
   openPath,
   enterDirectory,
   goBack,
+  createFile,
+  createDirectory,
+  deleteItem,
 } = useFileSystem();
 
 const { pullRepo, pushRepo, syncing } = useRepos();
@@ -93,7 +100,9 @@ const dirStatuses = computed(() => {
       } else {
         // Only upgrade priority, never downgrade
         const priority = ['Renamed', 'Deleted', 'New', 'Modified', 'staged'];
-        if (priority.indexOf(incoming) > priority.indexOf(existing)) {
+        const incomingIndex = incoming ? priority.indexOf(incoming) : -1;
+        const existingIndex = existing ? priority.indexOf(existing) : -1;
+        if (incomingIndex > existingIndex) {
           map.set(dirPath, incoming);
         }
       }
@@ -291,6 +300,87 @@ async function handleSave() {
     }
   }
 }
+
+// File and Folder Creation/Deletion State & Logic
+const showCreateModal = ref(false);
+const createType = ref<"file" | "directory">("file");
+const newName = ref("");
+const createError = ref<string | null>(null);
+
+const showDeleteModal = ref(false);
+const itemToDelete = ref<{ name: string; is_dir: boolean } | null>(null);
+const deleteError = ref<string | null>(null);
+
+const showSpeedDial = ref(false);
+
+function openCreateModal(type: "file" | "directory") {
+  createType.value = type;
+  newName.value = "";
+  createError.value = null;
+  showCreateModal.value = true;
+}
+
+function triggerCreate(type: "file" | "directory") {
+  showSpeedDial.value = false;
+  openCreateModal(type);
+}
+
+async function handleCreate() {
+  if (!newName.value.trim()) {
+    createError.value = "Name cannot be empty";
+    return;
+  }
+  
+  const path = currentRelativePath.value
+    ? `${currentRelativePath.value}/${newName.value.trim()}`
+    : newName.value.trim();
+    
+  let success = false;
+  if (createType.value === "file") {
+    success = await createFile(props.repo.id, path);
+  } else {
+    success = await createDirectory(props.repo.id, path);
+  }
+  
+  if (success) {
+    showCreateModal.value = false;
+    await loadFiles(props.repo.id);
+    emit("notify", { 
+      type: "success", 
+      text: `${createType.value === 'file' ? 'File' : 'Folder'} "${newName.value}" created successfully` 
+    });
+  } else {
+    createError.value = error.value || `Failed to create ${createType.value}`;
+  }
+}
+
+function confirmDelete(entry: { name: string; is_dir: boolean }) {
+  itemToDelete.value = entry;
+  deleteError.value = null;
+  showDeleteModal.value = true;
+}
+
+async function handleDelete() {
+  if (!itemToDelete.value) return;
+  
+  const path = currentRelativePath.value
+    ? `${currentRelativePath.value}/${itemToDelete.value.name}`
+    : itemToDelete.value.name;
+    
+  const success = await deleteItem(props.repo.id, path);
+  
+  if (success) {
+    showDeleteModal.value = false;
+    itemToDelete.value = null;
+    await loadFiles(props.repo.id);
+    emit("notify", { 
+      type: "success", 
+      text: `Deleted successfully` 
+    });
+  } else {
+    deleteError.value = error.value || "Failed to delete item";
+  }
+}
 </script>
 
 <template>
@@ -473,7 +563,7 @@ async function handleSave() {
       </div>
 
       <div v-else-if="renderedFile !== null">
-        <FileContent :file="renderedFile" :filename="renderedFile.name" @edit="handleEdit" />
+        <FileContent :file="renderedFile" :filename="currentFilePath?.split('/').pop() || undefined" @edit="handleEdit" />
       </div>
 
       <!-- Search Results -->
@@ -512,18 +602,28 @@ async function handleSave() {
             <FileText v-else :size="20" />
           </div>
           <span class="truncate font-medium text-sm font-sans font-medium">{{ entry.name }}</span>
-          <div
-            v-if="getEntryStatus(entry.name, entry.is_dir)"
-            class="w-1.5 h-1.5 rounded-full shrink-0 ml-auto"
-            :class="{
-              'bg-aqua':   getEntryStatus(entry.name, entry.is_dir) === 'staged',
-              'bg-yellow': getEntryStatus(entry.name, entry.is_dir) === 'Modified',
-              'bg-green':  getEntryStatus(entry.name, entry.is_dir) === 'New',
-              'bg-red':    getEntryStatus(entry.name, entry.is_dir) === 'Deleted',
-              'bg-orange': getEntryStatus(entry.name, entry.is_dir) === 'Renamed',
-            }"
-            :title="getEntryStatus(entry.name, entry.is_dir) ?? ''"
-          />
+          <div class="flex items-center gap-3 ml-auto shrink-0">
+            <div
+              v-if="getEntryStatus(entry.name, entry.is_dir)"
+              class="w-1.5 h-1.5 rounded-full shrink-0"
+              :class="{
+                'bg-aqua':   getEntryStatus(entry.name, entry.is_dir) === 'staged',
+                'bg-yellow': getEntryStatus(entry.name, entry.is_dir) === 'Modified',
+                'bg-green':  getEntryStatus(entry.name, entry.is_dir) === 'New',
+                'bg-red':    getEntryStatus(entry.name, entry.is_dir) === 'Deleted',
+                'bg-orange': getEntryStatus(entry.name, entry.is_dir) === 'Renamed',
+              }"
+              :title="getEntryStatus(entry.name, entry.is_dir) ?? ''"
+            />
+            
+            <button
+              @click.stop="confirmDelete(entry)"
+              class="w-8 h-8 flex items-center justify-center text-fg-dim opacity-50 hover:text-red hover:opacity-100 hover:bg-bg2/40 active:scale-95 duration-100 transition-all rounded-md cursor-pointer"
+              title="Delete"
+            >
+              <Trash2 :size="16" />
+            </button>
+          </div>
         </div>
         
         <div v-if="files.length === 0" class="flex flex-col items-center justify-center py-16 text-fg-dim opacity-30">
@@ -532,7 +632,190 @@ async function handleSave() {
         </div>
       </div>
     </div>
+
+  <!-- Create File/Folder Modal -->
+  <Transition name="fade">
+    <div 
+      v-if="showCreateModal" 
+      class="fixed inset-0 z-50 flex items-center justify-center bg-bg0/80 backdrop-blur-xs p-4"
+      @click.self="showCreateModal = false"
+    >
+      <div 
+        class="bg-bg1 border border-border rounded-xl p-6 max-w-sm w-full space-y-4 relative"
+        style="box-shadow: var(--shadow-lg), var(--shadow-inset)"
+      >
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold uppercase tracking-wider text-fg font-sans flex items-center gap-2">
+            <FilePlus v-if="createType === 'file'" :size="16" class="text-green" />
+            <FolderPlus v-else :size="16" class="text-yellow" />
+            Create New {{ createType === 'file' ? 'File' : 'Folder' }}
+          </h3>
+          <button 
+            @click="showCreateModal = false"
+            class="p-1 rounded-md text-fg-dim hover:text-fg hover:bg-bg2 transition-colors cursor-pointer"
+          >
+            <X :size="16" />
+          </button>
+        </div>
+
+        <!-- Input -->
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold uppercase tracking-wider text-fg-dim font-sans">
+            Name
+          </label>
+          <input
+            v-model="newName"
+            placeholder="e.g. index.ts or components"
+            class="w-full px-3 py-2 bg-bg2 border border-border rounded-lg outline-none focus:border-yellow text-sm font-mono"
+            @keydown.enter="handleCreate"
+            autofocus
+          />
+        </div>
+
+        <!-- Error -->
+        <div v-if="createError" class="text-xs text-red font-mono bg-red/10 border border-red/20 rounded-lg p-2.5">
+          {{ createError }}
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button
+            @click="showCreateModal = false"
+            class="min-h-[36px] px-4 text-xs font-bold rounded-lg border border-border text-fg-dim hover:text-fg hover:bg-bg2 active:scale-95 duration-100 transition-all cursor-pointer font-sans"
+          >
+            Cancel
+          </button>
+          <button
+            @click="handleCreate"
+            class="min-h-[36px] px-4 text-xs font-bold rounded-lg text-bg0 font-sans active:scale-95 duration-100 transition-all cursor-pointer"
+            :class="createType === 'file' ? 'bg-green hover:bg-green/90' : 'bg-yellow hover:bg-yellow/90'"
+          >
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+  </Transition>
+
+  <!-- Delete Confirmation Modal -->
+  <Transition name="fade">
+    <div 
+      v-if="showDeleteModal" 
+      class="fixed inset-0 z-50 flex items-center justify-center bg-bg0/80 backdrop-blur-xs p-4"
+      @click.self="showDeleteModal = false"
+    >
+      <div 
+        class="bg-bg1 border border-border rounded-xl p-6 max-w-sm w-full space-y-4 relative"
+        style="box-shadow: var(--shadow-lg), var(--shadow-inset)"
+      >
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold uppercase tracking-wider text-red font-sans flex items-center gap-2">
+            <Trash2 :size="16" />
+            Delete {{ itemToDelete?.is_dir ? 'Folder' : 'File' }}
+          </h3>
+          <button 
+            @click="showDeleteModal = false"
+            class="p-1 rounded-md text-fg-dim hover:text-fg hover:bg-bg2 transition-colors cursor-pointer"
+          >
+            <X :size="16" />
+          </button>
+        </div>
+
+        <!-- Description -->
+        <div class="space-y-2">
+          <p class="text-sm text-fg font-sans">
+            Are you sure you want to delete <span class="font-mono bg-bg2 px-1.5 py-0.5 rounded text-xs border border-border font-bold">{{ itemToDelete?.name }}</span>?
+          </p>
+          <p class="text-[11px] text-fg-dim font-sans leading-relaxed">
+            This action cannot be undone. All contents will be permanently deleted.
+          </p>
+        </div>
+
+        <!-- Error -->
+        <div v-if="deleteError" class="text-xs text-red font-mono bg-red/10 border border-red/20 rounded-lg p-2.5">
+          {{ deleteError }}
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button
+            @click="showDeleteModal = false"
+            class="min-h-[36px] px-4 text-xs font-bold rounded-lg border border-border text-fg-dim hover:text-fg hover:bg-bg2 active:scale-95 duration-100 transition-all cursor-pointer font-sans"
+          >
+            Cancel
+          </button>
+          <button
+            @click="handleDelete"
+            class="min-h-[36px] px-4 text-xs font-bold rounded-lg bg-red hover:bg-red/90 text-bg0 font-sans active:scale-95 duration-100 transition-all cursor-pointer"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </Transition>
+
+  <!-- Speed Dial Backdrop Click-Away -->
+  <div 
+    v-if="showSpeedDial" 
+    class="fixed inset-0 z-35 bg-transparent pointer-events-auto"
+    @click="showSpeedDial = false"
+  />
+
+  <!-- FAB (Floating Action Button) with Speed Dial -->
+  <div 
+    v-if="view === 'files' && !renderedFile" 
+    class="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 pointer-events-none"
+  >
+    <div class="max-w-2xl mx-auto px-6 flex flex-col items-end gap-3 pointer-events-auto">
+      <!-- Speed Dial Options -->
+      <Transition name="speed-dial">
+        <div v-if="showSpeedDial" class="flex flex-col items-end gap-3 mb-2">
+          <!-- Create File Button -->
+          <button
+            @click="triggerCreate('file')"
+            class="flex items-center gap-2 px-3 py-2 bg-bg1 border border-border rounded-lg text-fg hover:text-green shadow-md active:scale-95 duration-100 transition-all cursor-pointer font-sans text-xs font-bold"
+            style="box-shadow: var(--shadow-md), var(--shadow-inset)"
+          >
+            <span>New File</span>
+            <div class="w-8 h-8 rounded-full bg-green/10 flex items-center justify-center text-green">
+              <FilePlus :size="16" />
+            </div>
+          </button>
+
+          <!-- Create Folder Button -->
+          <button
+            @click="triggerCreate('directory')"
+            class="flex items-center gap-2 px-3 py-2 bg-bg1 border border-border rounded-lg text-fg hover:text-yellow shadow-md active:scale-95 duration-100 transition-all cursor-pointer font-sans text-xs font-bold"
+            style="box-shadow: var(--shadow-md), var(--shadow-inset)"
+          >
+            <span>New Folder</span>
+            <div class="w-8 h-8 rounded-full bg-yellow/10 flex items-center justify-center text-yellow">
+              <FolderPlus :size="16" />
+            </div>
+          </button>
+        </div>
+      </Transition>
+
+      <!-- Main FAB Button -->
+      <button
+        @click="showSpeedDial = !showSpeedDial"
+        class="w-12 h-12 rounded-full bg-yellow text-bg0 flex items-center justify-center shadow-lg active:scale-95 duration-150 transition-all cursor-pointer relative"
+        :class="{ 'bg-bg3 text-fg border border-border': showSpeedDial }"
+        style="box-shadow: var(--shadow-lg), var(--shadow-inset)"
+        title="Add New..."
+      >
+        <Plus 
+          :size="24" 
+          class="transition-transform duration-200"
+          :class="{ 'rotate-45': showSpeedDial }"
+        />
+      </button>
+    </div>
   </div>
+</div>
 </template>
 
 <style scoped>
@@ -549,5 +832,26 @@ async function handleSave() {
   transform: translateY(-10px);
   margin-bottom: 0;
   overflow: hidden;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.speed-dial-enter-active,
+.speed-dial-leave-active {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.speed-dial-enter-from,
+.speed-dial-leave-to {
+  opacity: 0;
+  transform: translateY(15px) scale(0.9);
 }
 </style>

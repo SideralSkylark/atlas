@@ -137,6 +137,48 @@ export function useFileSystem() {
     }
   }
 
+  async function createFile(repoId: string, relativePath: string) {
+    loading.value = true;
+    error.value = null;
+    try {
+      await invoke("create_file", { repoId, relativePath });
+      return true;
+    } catch (e) {
+      error.value = String(e);
+      return false;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function createDirectory(repoId: string, relativePath: string) {
+    loading.value = true;
+    error.value = null;
+    try {
+      await invoke("create_directory", { repoId, relativePath });
+      return true;
+    } catch (e) {
+      error.value = String(e);
+      return false;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function deleteItem(repoId: string, relativePath: string) {
+    loading.value = true;
+    error.value = null;
+    try {
+      await invoke("delete_item", { repoId, relativePath });
+      return true;
+    } catch (e) {
+      error.value = String(e);
+      return false;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   function enterDirectory(dirName: string) {
     currentRelativePath.value = currentRelativePath.value
       ? `${currentRelativePath.value}/${dirName}`
@@ -182,6 +224,9 @@ export function useFileSystem() {
     renderFile,
     readRawFile,
     saveFile,
+    createFile,
+    createDirectory,
+    deleteItem,
     openPath,
     enterDirectory,
     goBack,

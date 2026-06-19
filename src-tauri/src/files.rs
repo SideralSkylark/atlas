@@ -83,6 +83,52 @@ pub fn write_file<R: Runtime>(
 }
 
 #[command]
+pub fn create_file<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    relative_path: String,
+) -> Result<(), String> {
+    let path = repos::repo_path(&app, &repo_id).join(&relative_path);
+    if path.exists() {
+        return Err("File already exists".to_string());
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(&path, "").map_err(|e| e.to_string())
+}
+
+#[command]
+pub fn create_directory<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    relative_path: String,
+) -> Result<(), String> {
+    let path = repos::repo_path(&app, &repo_id).join(&relative_path);
+    if path.exists() {
+        return Err("Directory already exists".to_string());
+    }
+    fs::create_dir_all(&path).map_err(|e| e.to_string())
+}
+
+#[command]
+pub fn delete_item<R: Runtime>(
+    app: AppHandle<R>,
+    repo_id: String,
+    relative_path: String,
+) -> Result<(), String> {
+    let path = repos::repo_path(&app, &repo_id).join(&relative_path);
+    if !path.exists() {
+        return Err("Item does not exist".to_string());
+    }
+    if path.is_dir() {
+        fs::remove_dir_all(&path).map_err(|e| e.to_string())
+    } else {
+        fs::remove_file(&path).map_err(|e| e.to_string())
+    }
+}
+
+#[command]
 pub fn render_file<R: Runtime>(
     app: AppHandle<R>,
     state: tauri::State<'_, AppState>,
