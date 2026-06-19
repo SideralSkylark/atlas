@@ -17,7 +17,7 @@ use files::{list_files, read_raw_file, render_file, search_files, write_file, cr
 
 // Git
 use git::{
-    branch::{create_branch, list_branches, switch_branch, delete_branch},
+    branch::{create_branch, list_branches, switch_branch, delete_branch, merge_branch, get_conflicts, resolve_conflict},
     clone::clone_repo,
     commit::{commit_changes, get_commit_history},
     remote::{git_pull, git_push},
@@ -51,6 +51,9 @@ pub fn run() {
             list_branches,
             create_branch,
             delete_branch,
+            merge_branch,
+            get_conflicts,
+            resolve_conflict,
             switch_branch,
             get_commit_history,
             get_status,

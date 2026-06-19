@@ -68,8 +68,8 @@ devices in your workflow don't need Atlas. They just need Git.
 
 ### Phase 5 — Editor
 
-* [ ] add and delete files
-* [ ] delete branches
+* [x] add and delete files
+* [x] delete branches
 * [x] In-app text editor
 * [x] Save file changes
 * [x] Commit from editor
@@ -146,7 +146,7 @@ no risk of other apps modifying repo state.
 ### High Priority
 - [ ] **Conflict Resolution UI**: A dedicated view to handle merge conflicts within the app.
 - [ ] **SSH Support**: Implementation of Phase 6 (Key generation, import, and SSH-based remotes).
-- [ ] **File Management**: Create, delete, and rename files/directories from the file browser.
+- [x] **File Management**: Create, delete, and rename files/directories from the file browser.
 - [ ] **Branch Management**: Delete branches (local and remote) and merge support.
 
 ### Git Enhancements

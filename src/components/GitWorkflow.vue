@@ -2,7 +2,6 @@
 import { ref, onMounted } from "vue";
 import { 
   GitBranch, 
-  History as HistoryIcon, 
   Plus, 
   Check, 
   X, 
@@ -11,9 +10,10 @@ import {
   FileCode,
   GitCommit,
   ChevronRight,
-  ChevronDown,
   RotateCcw,
-  Trash2
+  Trash2,
+  GitMerge,
+  AlertTriangle
 } from "@lucide/vue";
 import { invoke } from "@tauri-apps/api/core";
 import { useGit } from "../composables/useGit";
@@ -26,6 +26,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "reloadFiles"): void;
+  (e: "editFile", filepath: string): void;
 }>();
 
 const {
@@ -39,6 +40,9 @@ const {
   createBranch,
   switchBranch,
   deleteBranch,
+  mergeBranch,
+  getConflicts,
+  resolveConflict,
   loadHistory,
   loadStatus,
   stageFile,
@@ -56,6 +60,13 @@ const showAuthor = ref(false);
 
 const revertingFile = ref<string | null>(null);
 const confirmRevert = ref<string | null>(null);
+
+function triggerRevert(path: string) {
+  confirmRevert.value = path;
+  if (typeof window !== 'undefined' && 'vibrate' in window.navigator) {
+    window.navigator.vibrate(30);
+  }
+}
 
 const authorName = ref(localStorage.getItem("atlas_author_name") || "Atlas User");
 const authorEmail = ref(localStorage.getItem("atlas_author_email") || "user@atlas.app");
@@ -82,16 +93,12 @@ async function onCreateBranch() {
   await createBranch(props.repo.id, newBranchName.value);
   newBranchName.value = "";
   showCreateBranch.value = false;
-  await loadBranches(props.repo.id);
+  await reloadAll();
 }
 
 async function onSwitchBranch(name: string) {
   await switchBranch(props.repo.id, name);
-  await Promise.all([
-    loadBranches(props.repo.id),
-    loadStatus(props.repo.id),
-    loadHistory(props.repo.id)
-  ]);
+  await reloadAll();
 }
 
 const branchToDelete = ref<{ name: string; is_remote: boolean } | null>(null);
@@ -103,6 +110,47 @@ async function onDeleteBranch(branch: { name: string; is_remote: boolean }) {
   }
 }
 
+const conflictedFiles = ref<string[]>([]);
+const branchToMerge = ref<{ name: string; is_remote: boolean } | null>(null);
+
+async function checkConflicts() {
+  conflictedFiles.value = await getConflicts(props.repo.id);
+}
+
+async function onMergeBranch(branchName: string) {
+  const res = await mergeBranch(props.repo.id, branchName, authorName.value, authorEmail.value);
+  branchToMerge.value = null;
+  
+  if (res) {
+    if (res.success) {
+      error.value = null;
+      await reloadAll();
+    } else {
+      await reloadAll();
+    }
+  }
+}
+
+async function onResolveConflict(filepath: string, choice: string) {
+  const success = await resolveConflict(props.repo.id, filepath, choice);
+  if (success) {
+    await reloadAll();
+  }
+}
+
+function onEditConflictedFile(filepath: string) {
+  emit('editFile', filepath);
+}
+
+async function reloadAll() {
+  await Promise.all([
+    loadBranches(props.repo.id),
+    loadStatus(props.repo.id),
+    loadHistory(props.repo.id),
+    checkConflicts()
+  ]);
+}
+
 async function onCommit() {
   if (!commitMessage.value) return;
   
@@ -112,10 +160,7 @@ async function onCommit() {
   await commitChanges(props.repo.id, commitMessage.value, authorName.value, authorEmail.value);
   commitMessage.value = "";
   if ('vibrate' in navigator) navigator.vibrate(20);
-  await Promise.all([
-    loadStatus(props.repo.id),
-    loadHistory(props.repo.id)
-  ]);
+  await reloadAll();
 }
 
 async function onStageAll() {
@@ -131,9 +176,7 @@ async function viewDiff(path: string, staged: boolean) {
 }
 
 onMounted(() => {
-  loadBranches(props.repo.id);
-  loadHistory(props.repo.id);
-  loadStatus(props.repo.id);
+  reloadAll();
 });
 </script>
 
@@ -214,6 +257,26 @@ onMounted(() => {
               </button>
             </div>
           </template>
+          <template v-else-if="branchToMerge?.name === branch.name">
+            <div class="flex flex-col min-w-0 font-sans">
+              <span class="text-xs text-green font-bold">Merge branch?</span>
+              <span class="text-[10px] text-fg-dim truncate max-w-[200px] font-mono mt-0.5">{{ branch.name }}</span>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                @click="onMergeBranch(branch.name)"
+                class="px-3 py-2 text-green text-xs font-bold hover:bg-green/10 rounded-lg transition-colors cursor-pointer active:scale-95 duration-100 font-sans"
+              >
+                Yes
+              </button>
+              <button
+                @click="branchToMerge = null"
+                class="px-3 py-2 text-fg-dim text-xs hover:bg-bg3 rounded-lg transition-colors cursor-pointer active:scale-95 duration-100 font-sans"
+              >
+                Cancel
+              </button>
+            </div>
+          </template>
           <template v-else>
             <div class="flex items-center gap-3 min-w-0">
               <GitBranch :size="18" :class="branch.is_current ? 'text-yellow' : 'text-fg-dim'" />
@@ -227,6 +290,13 @@ onMounted(() => {
                 title="Switch to branch"
               >
                 <ArrowLeftRight :size="16" />
+              </button>
+              <button
+                @click="branchToMerge = branch"
+                class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-green active:scale-95 duration-100 transition-all cursor-pointer"
+                title="Merge into current branch"
+              >
+                <GitMerge :size="16" />
               </button>
               <button
                 @click="branchToDelete = branch"
@@ -269,6 +339,62 @@ onMounted(() => {
 
     <!-- Changes Tab -->
     <div v-if="activeTab === 'changes'" class="space-y-6 font-sans">
+      <!-- Conflict Resolution Section -->
+      <div v-if="conflictedFiles.length > 0" class="p-4 bg-red/5 border border-red/20 rounded-xl space-y-3 font-sans animate-fade">
+        <div class="flex items-center gap-2 text-red">
+          <AlertTriangle :size="18" />
+          <h4 class="text-sm font-bold uppercase tracking-wider">Unresolved Merge Conflicts</h4>
+        </div>
+        <p class="text-xs text-fg-dim leading-relaxed">
+          The following files have conflicts. Select how you want to resolve each conflict, or edit the files manually.
+        </p>
+
+        <div class="space-y-2.5">
+          <div 
+            v-for="file in conflictedFiles" 
+            :key="file"
+            class="flex flex-col gap-2.5 p-3 bg-bg1 border border-border rounded-lg"
+          >
+            <!-- File Info -->
+            <div class="flex items-center justify-between min-w-0">
+              <span class="text-xs font-mono text-fg font-bold truncate pr-2">{{ file }}</span>
+              <span class="text-[9px] font-bold uppercase tracking-wider text-red bg-red/10 px-1.5 py-0.5 rounded shrink-0">Conflicted</span>
+            </div>
+
+            <!-- Resolution Actions -->
+            <div class="flex items-center gap-2 pt-1.5 border-t border-border/40">
+              <button
+                @click="onResolveConflict(file, 'ours')"
+                class="flex-1 py-1.5 px-2 bg-bg2 hover:bg-bg3 text-[10px] font-bold rounded text-yellow active:scale-95 duration-100 transition-all border border-border cursor-pointer"
+                title="Keep ours (current branch)"
+              >
+                Keep Ours
+              </button>
+              <button
+                @click="onResolveConflict(file, 'theirs')"
+                class="flex-1 py-1.5 px-2 bg-bg2 hover:bg-bg3 text-[10px] font-bold rounded text-aqua active:scale-95 duration-100 transition-all border border-border cursor-pointer"
+                title="Keep theirs (incoming branch)"
+              >
+                Keep Theirs
+              </button>
+              <button
+                @click="onEditConflictedFile(file)"
+                class="flex-1 py-1.5 px-2 bg-bg2 hover:bg-bg3 text-[10px] font-bold rounded text-fg hover:text-green active:scale-95 duration-100 transition-all border border-border cursor-pointer"
+                title="Edit manually"
+              >
+                Edit
+              </button>
+              <button
+                @click="onResolveConflict(file, 'merged')"
+                class="flex-1 py-1.5 px-2 bg-green text-bg0 text-[10px] font-bold rounded active:scale-95 duration-100 transition-all cursor-pointer"
+                title="Mark manually resolved as done"
+              >
+                Resolved
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
       <!-- Commit Form -->
       <div class="space-y-3 p-4 bg-bg1 border border-border rounded-lg shadow-md" style="box-shadow: var(--shadow-md), var(--shadow-inset)">
         <div class="space-y-2">
@@ -312,12 +438,15 @@ onMounted(() => {
           </button>
           <button
             @click="onCommit"
-            :disabled="!commitMessage || status.filter(s => s.staged).length === 0"
+            :disabled="!commitMessage || status.filter(s => s.staged).length === 0 || conflictedFiles.length > 0"
             class="flex-1 py-2.5 bg-green text-bg0 rounded-lg text-sm font-bold active:scale-95 duration-100 transition-all disabled:opacity-30 disabled:scale-100 cursor-pointer shadow-md font-sans"
           >
             Commit ({{ status.filter(s => s.staged).length }})
           </button>
         </div>
+        <p v-if="conflictedFiles.length > 0" class="text-[10px] text-red font-bold font-sans text-center mt-2 animate-fade">
+          Resolve conflicts before committing.
+        </p>
       </div>
 
       <!-- Status List -->
@@ -385,7 +514,7 @@ onMounted(() => {
                 </button>
                 <button
                   v-if="entry.status !== 'New'"
-                  @click="() => { confirmRevert = entry.path; if ('vibrate' in navigator) navigator.vibrate(30); }"
+                  @click="triggerRevert(entry.path)"
                   class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-fg-dim hover:text-red hover:bg-red/5 transition-colors cursor-pointer active:scale-95 duration-100"
                   title="Revert"
                 >

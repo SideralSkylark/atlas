@@ -532,7 +532,7 @@ async function handleDelete() {
 
     <!-- Git View -->
     <div v-if="view === 'git'" class="flex-1 overflow-y-auto px-6 -mx-6">
-      <GitWorkflow :repo="repo" @reload-files="loadFiles(repo.id)" />
+      <GitWorkflow :repo="repo" @reload-files="loadFiles(repo.id)" @edit-file="(path) => { editingPath = path }" />
     </div>
 
     <!-- Files View -->

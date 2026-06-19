@@ -138,6 +138,44 @@ export function useGit() {
     }
   }
 
+  async function mergeBranch(repoId: string, branchName: string, authorName: string, authorEmail: string): Promise<MergeResult | null> {
+    loading.value = true;
+    error.value = null;
+    try {
+      const res = await invoke<MergeResult>("merge_branch", { repoId, branchName, authorName, authorEmail });
+      await loadBranches(repoId);
+      return res;
+    } catch (e) {
+      error.value = String(e);
+      return null;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function getConflicts(repoId: string): Promise<string[]> {
+    try {
+      return await invoke<string[]>("get_conflicts", { repoId });
+    } catch (e) {
+      error.value = String(e);
+      return [];
+    }
+  }
+
+  async function resolveConflict(repoId: string, filepath: string, choice: string): Promise<boolean> {
+    loading.value = true;
+    error.value = null;
+    try {
+      await invoke("resolve_conflict", { repoId, filepath, choice });
+      return true;
+    } catch (e) {
+      error.value = String(e);
+      return false;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   return {
     branches,
     history,
@@ -149,6 +187,9 @@ export function useGit() {
     createBranch,
     switchBranch,
     deleteBranch,
+    mergeBranch,
+    getConflicts,
+    resolveConflict,
     loadHistory,
     loadStatus,
     stageFile,
@@ -156,4 +197,10 @@ export function useGit() {
     commitChanges,
     loadDiff,
   };
+}
+
+export interface MergeResult {
+  success: boolean;
+  conflicts: string[];
+  message: string;
 }
