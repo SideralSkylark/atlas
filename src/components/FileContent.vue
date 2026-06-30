@@ -92,7 +92,7 @@ async function copyContent(content: string) {
 
 <template>
   <div class="max-w-full overflow-hidden">
-    <div class="bg-bg1 border border-border rounded-xl overflow-hidden shadow-sm">
+    <div class="bg-bg1 border border-border rounded-xl overflow-hidden shadow-sm" style="box-shadow: var(--shadow-sm), var(--shadow-inset)">
       <!-- Unified Toolbar -->
       <div class="flex items-center justify-between px-4 py-2 bg-bg2 border-b border-border min-h-[44px]">
         <!-- Left: mode/context controls -->

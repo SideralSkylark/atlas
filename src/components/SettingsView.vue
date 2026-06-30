@@ -26,7 +26,8 @@ const { theme, appearance, setTheme, toggleAppearance } = useTheme();
         <!-- Mode Toggle -->
         <button 
           @click="toggleAppearance"
-          class="flex items-center justify-between p-4 bg-bg1 border border-border rounded-xl hover:border-yellow transition-all active:scale-[0.98]"
+          class="flex items-center justify-between p-4 bg-bg1 border border-border rounded-xl hover:border-yellow transition-all active:scale-[0.98] shadow-sm"
+          style="box-shadow: var(--shadow-sm), var(--shadow-inset)"
         >
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-lg bg-bg2 flex items-center justify-center text-yellow">
@@ -47,7 +48,7 @@ const { theme, appearance, setTheme, toggleAppearance } = useTheme();
         </button>
 
         <!-- Theme Selection -->
-        <div class="p-4 bg-bg1 border border-border rounded-xl space-y-3">
+        <div class="p-4 bg-bg1 border border-border rounded-xl space-y-3 shadow-sm" style="box-shadow: var(--shadow-sm), var(--shadow-inset)">
           <p class="text-[10px] font-bold uppercase tracking-widest text-fg-dim ml-1">Color Scheme</p>
           <div class="grid grid-cols-2 gap-2">
             <button 

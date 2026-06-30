@@ -38,7 +38,7 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Author Identity Card -->
-    <div class="p-5 bg-bg1 border border-border rounded-xl shadow-sm overflow-hidden">
+    <div class="p-5 bg-bg1 border border-border rounded-xl shadow-sm overflow-hidden" style="box-shadow: var(--shadow-sm), var(--shadow-inset)">
       <div class="flex items-center gap-2 mb-5 font-sans">
         <User :size="18" class="text-yellow" />
         <h2 class="text-yellow font-bold text-lg font-sans">Git Identity</h2>
@@ -69,7 +69,7 @@ onMounted(() => {
     </div>
 
     <!-- Git Credentials Card -->
-    <div class="p-5 bg-bg1 border border-border rounded-xl shadow-sm overflow-hidden">
+    <div class="p-5 bg-bg1 border border-border rounded-xl shadow-sm overflow-hidden" style="box-shadow: var(--shadow-sm), var(--shadow-inset)">
       <div class="flex items-center gap-2 mb-5 font-sans">
         <Key :size="18" class="text-yellow" />
         <h2 class="text-yellow font-bold text-lg font-sans">Git Credentials</h2>

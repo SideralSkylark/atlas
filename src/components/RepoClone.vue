@@ -55,11 +55,11 @@ async function onPaste() {
         <button
           @click="handleSubmit"
           :disabled="!url || cloning"
-          class="w-full py-3.5 font-bold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-[0.99] shadow-lg font-sans"
+          class="w-full py-3.5 font-bold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-[0.99] font-sans"
           :class="
             url && !cloning
-              ? 'bg-green text-bg0 active:brightness-90 cursor-pointer'
-              : 'bg-bg3 text-fg-dim cursor-not-allowed'
+              ? 'bg-green text-bg0 shadow-md active:brightness-90 cursor-pointer'
+              : 'bg-bg3 text-fg-dim cursor-not-allowed shadow-none'
           "
         >
           <Loader2 v-if="cloning" :size="20" class="animate-spin" />
