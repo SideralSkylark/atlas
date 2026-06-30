@@ -151,6 +151,75 @@ async function reloadAll() {
   ]);
 }
 
+defineExpose({
+  reloadAll
+});
+
+// Swipe Gestures for Changed Files
+const swipeFile = ref<string | null>(null);
+const swipeDeltaX = ref(0);
+let swipeStartX = 0;
+let swipeStartY = 0;
+let isHorizontalSwipe = false;
+
+function handleFileTouchStart(e: TouchEvent, path: string) {
+  swipeFile.value = path;
+  swipeStartX = e.touches[0].clientX;
+  swipeStartY = e.touches[0].clientY;
+  swipeDeltaX.value = 0;
+  isHorizontalSwipe = false;
+}
+
+function handleFileTouchMove(e: TouchEvent, path: string) {
+  if (swipeFile.value !== path) return;
+  
+  const currentX = e.touches[0].clientX;
+  const currentY = e.touches[0].clientY;
+  const deltaX = currentX - swipeStartX;
+  const deltaY = currentY - swipeStartY;
+
+  if (!isHorizontalSwipe && Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
+    isHorizontalSwipe = true;
+  }
+
+  if (isHorizontalSwipe) {
+    if (e.cancelable) e.preventDefault();
+    
+    if (deltaX > 0) {
+      swipeDeltaX.value = Math.min(deltaX, 120);
+    } else {
+      const entry = status.value.find(s => s.path === path);
+      if (entry && entry.status === 'New') {
+        swipeDeltaX.value = Math.max(deltaX / 3, -30);
+      } else {
+        swipeDeltaX.value = Math.max(deltaX, -120);
+      }
+    }
+  }
+}
+
+async function handleFileTouchEnd(entry: any) {
+  if (swipeFile.value !== entry.path) return;
+
+  const finalDelta = swipeDeltaX.value;
+  swipeFile.value = null;
+  swipeDeltaX.value = 0;
+
+  if (isHorizontalSwipe) {
+    if (finalDelta > 80) {
+      if (entry.staged) {
+        await unstageFile(props.repo.id, entry.path);
+      } else {
+        await stageFile(props.repo.id, entry.path);
+      }
+      if ('vibrate' in navigator) navigator.vibrate(20);
+    } else if (finalDelta < -80 && entry.status !== 'New') {
+      triggerRevert(entry.path);
+    }
+  }
+}
+
+
 async function onCommit() {
   if (!commitMessage.value) return;
   
@@ -460,68 +529,111 @@ onMounted(() => {
           <div
             v-for="entry in status"
             :key="entry.path"
-            class="flex items-center justify-between p-3 bg-bg1 border border-border rounded-xl shadow-sm min-h-[64px]"
-            :class="{ 'border-green/30 bg-bg1/80': entry.staged }"
-            style="box-shadow: var(--shadow-sm), var(--shadow-inset)"
+            class="relative overflow-hidden rounded-xl bg-bg0"
           >
-            <div v-if="revertingFile === entry.path" class="flex items-center justify-center w-full">
-              <Loader2 :size="20" class="animate-spin text-red" />
-            </div>
-            <template v-else-if="confirmRevert === entry.path">
-              <span class="text-xs text-red font-bold font-sans">Revert to last commit?</span>
-              <div class="flex items-center gap-1">
-                <button
-                  @click="onRevert(entry.path)"
-                  class="px-3 py-2 text-red text-xs font-bold hover:bg-red/10 rounded-lg transition-colors font-sans"
-                >
-                  Yes
-                </button>
-                <button
-                  @click="confirmRevert = null"
-                  class="px-3 py-2 text-fg-dim text-xs hover:bg-bg3 rounded-lg transition-colors font-sans"
-                >
-                  Cancel
-                </button>
-              </div>
-            </template>
-            <template v-else>
-              <div class="flex items-center gap-3 min-w-0 cursor-pointer" @click="viewDiff(entry.path, entry.staged)">
-                <div :class="entry.staged ? 'text-green' : 'text-fg-dim'">
-                  <FileCode :size="18" />
-                </div>
-                <div class="flex flex-col min-w-0">
-                  <span class="text-sm font-bold truncate text-fg font-mono">{{ entry.path }}</span>
-                  <span class="text-[9px] font-bold uppercase tracking-wider transition-colors font-sans"
-                        :class="{
-                          'text-yellow': entry.status === 'Modified',
-                          'text-green': entry.status === 'New',
-                          'text-red': entry.status === 'Deleted',
-                          'text-aqua': entry.status === 'Renamed',
-                          'opacity-60': !['Modified', 'New', 'Deleted', 'Renamed'].includes(entry.status)
-                        }">{{ entry.status }}</span>
-                </div>
+            <!-- Background Actions (Visible when swiping) -->
+            <div 
+              class="absolute inset-0 flex justify-between items-center px-4 rounded-xl pointer-events-none transition-colors"
+              :class="{
+                'bg-green/10': swipeFile === entry.path && swipeDeltaX > 0,
+                'bg-red/10': swipeFile === entry.path && swipeDeltaX < 0 && entry.status !== 'New',
+                'opacity-0': swipeFile !== entry.path
+              }"
+            >
+              <!-- Left Swipe Action Indicator (Stage/Unstage) -->
+              <div 
+                class="flex items-center gap-1.5 text-green text-[10px] font-bold uppercase tracking-wider transition-opacity" 
+                :class="{ 'opacity-0': swipeDeltaX <= 20 }"
+              >
+                <Plus v-if="!entry.staged" :size="14" />
+                <X v-else :size="14" />
+                <span>{{ entry.staged ? 'Unstage' : 'Stage' }}</span>
               </div>
               
-              <div class="flex items-center gap-1">
-                <button
-                  @click="entry.staged ? unstageFile(props.repo.id, entry.path) : stageFile(props.repo.id, entry.path)"
-                  class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors cursor-pointer active:scale-95 duration-100"
-                  :class="entry.staged ? 'text-fg-dim hover:bg-bg3' : 'text-green hover:bg-green/10'"
-                  :title="entry.staged ? 'Unstage' : 'Stage'"
-                >
-                  <X v-if="entry.staged" :size="18" />
-                  <Plus v-else :size="18" />
-                </button>
-                <button
-                  v-if="entry.status !== 'New'"
-                  @click="triggerRevert(entry.path)"
-                  class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-fg-dim hover:text-red hover:bg-red/5 transition-colors cursor-pointer active:scale-95 duration-100"
-                  title="Revert"
-                >
-                  <RotateCcw :size="16" />
-                </button>
+              <!-- Right Swipe Action Indicator (Revert) -->
+              <div 
+                class="flex items-center gap-1.5 text-red text-[10px] font-bold uppercase tracking-wider transition-opacity" 
+                :class="{ 'opacity-0': swipeDeltaX >= -20 || entry.status === 'New' }"
+              >
+                <span>Revert</span>
+                <RotateCcw :size="14" />
               </div>
-            </template>
+            </div>
+
+            <!-- Foreground Card -->
+            <div
+              class="flex items-center justify-between p-3 bg-bg1 border border-border rounded-xl shadow-sm min-h-[64px] relative z-10 select-none"
+              :class="{ 
+                'border-green/30 bg-bg1/80': entry.staged,
+                'transition-transform duration-200 ease-out': swipeFile !== entry.path
+              }"
+              :style="{ 
+                transform: swipeFile === entry.path ? `translateX(${swipeDeltaX}px)` : 'none',
+                boxShadow: 'var(--shadow-sm), var(--shadow-inset)'
+              }"
+              @touchstart="handleFileTouchStart($event, entry.path)"
+              @touchmove="handleFileTouchMove($event, entry.path)"
+              @touchend="handleFileTouchEnd(entry)"
+            >
+              <div v-if="revertingFile === entry.path" class="flex items-center justify-center w-full">
+                <Loader2 :size="20" class="animate-spin text-red" />
+              </div>
+              <template v-else-if="confirmRevert === entry.path">
+                <span class="text-xs text-red font-bold font-sans">Revert to last commit?</span>
+                <div class="flex items-center gap-1">
+                  <button
+                    @click="onRevert(entry.path)"
+                    class="px-3 py-2 text-red text-xs font-bold hover:bg-red/10 rounded-lg transition-colors font-sans"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    @click="confirmRevert = null"
+                    class="px-3 py-2 text-fg-dim text-xs hover:bg-bg3 rounded-lg transition-colors font-sans"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </template>
+              <template v-else>
+                <div class="flex items-center gap-3 min-w-0 cursor-pointer" @click="viewDiff(entry.path, entry.staged)">
+                  <div :class="entry.staged ? 'text-green' : 'text-fg-dim'">
+                    <FileCode :size="18" />
+                  </div>
+                  <div class="flex flex-col min-w-0">
+                    <span class="text-sm font-bold truncate text-fg font-mono">{{ entry.path }}</span>
+                    <span class="text-[9px] font-bold uppercase tracking-wider transition-colors font-sans"
+                          :class="{
+                            'text-yellow': entry.status === 'Modified',
+                            'text-green': entry.status === 'New',
+                            'text-red': entry.status === 'Deleted',
+                            'text-aqua': entry.status === 'Renamed',
+                            'opacity-60': !['Modified', 'New', 'Deleted', 'Renamed'].includes(entry.status)
+                          }">{{ entry.status }}</span>
+                  </div>
+                </div>
+                
+                <div class="flex items-center gap-1">
+                  <button
+                    @click="entry.staged ? unstageFile(props.repo.id, entry.path) : stageFile(props.repo.id, entry.path)"
+                    class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors cursor-pointer active:scale-95 duration-100"
+                    :class="entry.staged ? 'text-fg-dim hover:bg-bg3' : 'text-green hover:bg-green/10'"
+                    :title="entry.staged ? 'Unstage' : 'Stage'"
+                  >
+                    <X v-if="entry.staged" :size="18" />
+                    <Plus v-else :size="18" />
+                  </button>
+                  <button
+                    v-if="entry.status !== 'New'"
+                    @click="triggerRevert(entry.path)"
+                    class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-fg-dim hover:text-red hover:bg-red/5 transition-colors cursor-pointer active:scale-95 duration-100"
+                    title="Revert"
+                  >
+                    <RotateCcw :size="16" />
+                  </button>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
       </div>

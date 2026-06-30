@@ -66,6 +66,7 @@ const showSearch = ref(false);
 const searchQuery = ref("");
 const editingPath = ref<string | null>(null);
 const editorRef = ref<any>(null);
+const gitWorkflowRef = ref<any>(null);
 
 const fileStatuses = ref<StatusEntry[]>([]);
 
@@ -244,8 +245,10 @@ function onTouchMove(e: TouchEvent) {
     swipeDelta.value = deltaX;
   }
 
-  // Pull to refresh detection
-  if (deltaY > 20 && Math.abs(deltaX) < 30 && containerRef.value?.scrollTop === 0 && view.value === 'files' && !renderedFile.value && !showSearch.value) {
+  // Pull to refresh detection (allowed in both files and git views when scrolled to top)
+  const isScrollAtTop = containerRef.value?.scrollTop === 0;
+  const canPull = isScrollAtTop && !renderedFile.value && !showSearch.value;
+  if (deltaY > 20 && Math.abs(deltaX) < 30 && canPull) {
     isPulling.value = true;
     pullDelta.value = deltaY;
     e.preventDefault(); // Prevent native scroll
@@ -257,9 +260,12 @@ async function onTouchEnd() {
     handleBack();
   }
   
-  if (isPulling.value && pullDelta.value > 80) {
-    await loadFiles(props.repo.id);
+  if (isPulling.value && pullDelta.value > 80 && syncing.value !== props.repo.id) {
     if ('vibrate' in navigator) navigator.vibrate(20);
+    await onPull();
+    if (view.value === 'git' && gitWorkflowRef.value) {
+      await gitWorkflowRef.value.reloadAll();
+    }
   }
 
   isSwiping.value = false;
@@ -409,12 +415,12 @@ async function handleDelete() {
     >
       <!-- Pull to refresh indicator -->
       <div 
-        v-if="isPulling" 
+        v-if="isPulling || syncing === repo.id" 
         class="absolute top-0 left-0 right-0 flex justify-center pt-2 pointer-events-none transition-transform"
-        :style="{ transform: `translateY(${Math.min(pullDelta / 2, 40)}px)` }"
+        :style="{ transform: `translateY(${isPulling ? Math.min(pullDelta / 2, 40) : 40}px)` }"
       >
-        <div class="bg-bg1 border border-border p-2 rounded-full shadow-lg">
-          <RefreshCcw :size="20" class="text-green animate-spin" :style="{ animationDuration: '2s', transform: `rotate(${pullDelta * 2}deg)` }" />
+        <div class="bg-bg1 border border-border p-2 rounded-full shadow-lg" style="box-shadow: var(--shadow-sm), var(--shadow-inset)">
+          <RefreshCcw :size="20" class="text-green animate-spin" :style="{ animationDuration: '2s', transform: syncing === repo.id ? 'none' : `rotate(${pullDelta * 2}deg)` }" />
         </div>
       </div>
 
@@ -532,7 +538,7 @@ async function handleDelete() {
 
     <!-- Git View -->
     <div v-if="view === 'git'" class="flex-1 overflow-y-auto px-6 -mx-6">
-      <GitWorkflow :repo="repo" @reload-files="loadFiles(repo.id)" @edit-file="(path) => { editingPath = path }" />
+      <GitWorkflow ref="gitWorkflowRef" :repo="repo" @reload-files="loadFiles(repo.id)" @edit-file="(path) => { editingPath = path }" />
     </div>
 
     <!-- Files View -->
