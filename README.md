@@ -144,6 +144,7 @@ no risk of other apps modifying repo state.
 ## Todo
 
 ### High Priority
+- [ ] **UI**: remove the duplicate safe-area bottom offset
 - [ ] **Conflict Resolution UI**: A dedicated view to handle merge conflicts within the app.
 - [ ] **SSH Support**: Implementation of Phase 6 (Key generation, import, and SSH-based remotes).
 - [x] **File Management**: Create, delete, and rename files/directories from the file browser.
