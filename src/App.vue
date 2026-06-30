@@ -28,6 +28,63 @@ function notify(msg: { type: "success" | "error"; text: string }) {
   toastMessage.value = msg;
 }
 
+// Navigation Swipe Gestures (repos <-> activity <-> settings)
+const touchStartX = ref(0);
+const touchStartY = ref(0);
+const touchCurrentX = ref(0);
+const touchCurrentY = ref(0);
+const isNavSwiping = ref(false);
+
+function onNavTouchStart(e: TouchEvent) {
+  if (selectedRepo.value) return; // Do not swipe tabs if inside repo
+  touchStartX.value = e.touches[0].clientX;
+  touchStartY.value = e.touches[0].clientY;
+  touchCurrentX.value = touchStartX.value;
+  touchCurrentY.value = touchStartY.value;
+  isNavSwiping.value = false;
+}
+
+function onNavTouchMove(e: TouchEvent) {
+  if (selectedRepo.value) return;
+  touchCurrentX.value = e.touches[0].clientX;
+  touchCurrentY.value = e.touches[0].clientY;
+  
+  const deltaX = touchCurrentX.value - touchStartX.value;
+  const deltaY = touchCurrentY.value - touchStartY.value;
+
+  // Swiping horizontally (must be mostly horizontal and exceed threshold to commit)
+  if (!isNavSwiping.value && Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 2.5) {
+    isNavSwiping.value = true;
+  }
+}
+
+function onNavTouchEnd() {
+  if (!isNavSwiping.value) return;
+  
+  const deltaX = touchCurrentX.value - touchStartX.value;
+  const swipeThreshold = 120; // safe threshold to prevent accidental switches
+
+  if (Math.abs(deltaX) > swipeThreshold) {
+    const views: ('repos' | 'activity' | 'settings')[] = ['repos', 'activity', 'settings'];
+    const currentIndex = views.indexOf(currentView.value);
+    
+    if (deltaX > 0) {
+      // Swipe right (moves to left tab)
+      if (currentIndex > 0) {
+        currentView.value = views[currentIndex - 1];
+        if ('vibrate' in navigator) navigator.vibrate(10);
+      }
+    } else {
+      // Swipe left (moves to right tab)
+      if (currentIndex < views.length - 1) {
+        currentView.value = views[currentIndex + 1];
+        if ('vibrate' in navigator) navigator.vibrate(10);
+      }
+    }
+  }
+  isNavSwiping.value = false;
+}
+
 onMounted(async () => {
   await listen("backButton", () => {
     // 1. If the Editor overlay is open
@@ -72,7 +129,10 @@ onMounted(async () => {
               pt-[calc(1rem+env(safe-area-inset-top))] 
               pb-[env(safe-area-inset-bottom)]
               pl-[env(safe-area-inset-left)] 
-              pr-[env(safe-area-inset-right)]">
+              pr-[env(safe-area-inset-right)]"
+       @touchstart="onNavTouchStart"
+       @touchmove="onNavTouchMove"
+       @touchend="onNavTouchEnd">
     <div 
       class="max-w-2xl mx-auto h-full overflow-y-auto px-6 pb-[calc(64px+env(safe-area-inset-bottom))]"
       :class="{ 'content-fade-bottom': !(selectedRepo && fileBrowserRef?.renderedFile) && !fileBrowserRef?.editingPath }"

@@ -221,6 +221,8 @@ async function handleSearchEntry(entry: { relative_path: string; is_dir: boolean
 }
 
 // Gesture Handlers
+let startedAtTop = false;
+
 function onTouchStart(e: TouchEvent) {
   touchStartX.value = e.touches[0].clientX;
   touchStartY.value = e.touches[0].clientY;
@@ -230,6 +232,7 @@ function onTouchStart(e: TouchEvent) {
   isPulling.value = false;
   swipeDelta.value = 0;
   pullDelta.value = 0;
+  startedAtTop = containerRef.value ? containerRef.value.scrollTop === 0 : false;
 }
 
 function onTouchMove(e: TouchEvent) {
@@ -239,28 +242,33 @@ function onTouchMove(e: TouchEvent) {
   const deltaX = touchCurrentX.value - touchStartX.value;
   const deltaY = touchCurrentY.value - touchStartY.value;
 
-  // Swipe back detection
-  if (deltaX > 20 && Math.abs(deltaY) < 30 && view.value === 'files' && !showSearch.value) {
+  // Swipe back detection (must be mostly horizontal and exceed threshold)
+  if (!isSwiping.value && deltaX > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 2 && view.value === 'files' && !showSearch.value) {
     isSwiping.value = true;
+  }
+
+  if (isSwiping.value) {
     swipeDelta.value = deltaX;
   }
 
-  // Pull to refresh detection (allowed in both files and git views when scrolled to top)
-  const isScrollAtTop = containerRef.value?.scrollTop === 0;
-  const canPull = isScrollAtTop && !renderedFile.value && !showSearch.value;
-  if (deltaY > 20 && Math.abs(deltaX) < 30 && canPull) {
+  // Pull to refresh detection (must start at top, exceed vertical drag of 50px, and be mostly vertical)
+  const canPull = startedAtTop && !renderedFile.value && !showSearch.value;
+  if (!isPulling.value && deltaY > 50 && Math.abs(deltaY) > Math.abs(deltaX) * 2.5 && canPull) {
     isPulling.value = true;
+  }
+
+  if (isPulling.value) {
     pullDelta.value = deltaY;
-    e.preventDefault(); // Prevent native scroll
+    if (e.cancelable) e.preventDefault(); // Prevent native scroll
   }
 }
 
 async function onTouchEnd() {
-  if (isSwiping.value && swipeDelta.value > 100) {
+  if (isSwiping.value && swipeDelta.value > 120) {
     handleBack();
   }
   
-  if (isPulling.value && pullDelta.value > 80 && syncing.value !== props.repo.id) {
+  if (isPulling.value && pullDelta.value > 90 && syncing.value !== props.repo.id) {
     if ('vibrate' in navigator) navigator.vibrate(20);
     await onPull();
     if (view.value === 'git' && gitWorkflowRef.value) {
