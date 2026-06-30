@@ -419,7 +419,7 @@ async function handleDelete() {
     <!-- Header -->
     <div 
       class="sticky top-0 z-20 bg-bg0 pb-4 pt-1 space-y-3 shadow-md -mx-6 px-6" 
-      style="box-shadow: var(--shadow-md), var(--shadow-inset)"
+      style="box-shadow: var(--shadow-md)"
     >
       <!-- Pull to refresh indicator -->
       <div 
@@ -433,9 +433,9 @@ async function handleDelete() {
       </div>
 
       <!-- Row 1: Actions & Navigation -->
-      <div class="flex items-center justify-between gap-3">
+      <div class="relative flex items-center justify-between min-h-[44px]">
         <!-- Left: Back / Contextual Action -->
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 z-10">
           <button
             @click="handleBack"
             class="min-w-[44px] min-h-[44px] flex items-center justify-center border border-border rounded-lg text-fg-dim hover:text-fg hover:border-fg-dim active:scale-95 duration-100 transition-all cursor-pointer bg-bg1 shadow-sm"
@@ -445,8 +445,8 @@ async function handleDelete() {
           </button>
         </div>
 
-        <!-- Center: Contextual Title or Switcher -->
-        <div class="flex-1 flex justify-center min-w-0 px-2">
+        <!-- Center: Switcher (Always centered and overlayed) -->
+        <div class="absolute left-1/3 -translate-x-1/2 top-1/2 -translate-y-1/2 z-0">
           <div v-if="!renderedFile" class="flex bg-bg1 border border-border rounded-lg p-0.5 shadow-sm font-sans">
             <button
               @click="view = 'files'"
@@ -466,7 +466,7 @@ async function handleDelete() {
         </div>
 
         <!-- Right: Actions Group -->
-        <div class="flex items-center">
+        <div class="flex items-center z-10">
           <button
             v-if="view === 'files' && renderedFile"
             @click="handleEdit"

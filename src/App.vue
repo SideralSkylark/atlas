@@ -134,7 +134,7 @@ onMounted(async () => {
        @touchmove="onNavTouchMove"
        @touchend="onNavTouchEnd">
     <div 
-      class="max-w-2xl mx-auto h-full overflow-y-auto px-6 pb-[calc(64px+env(safe-area-inset-bottom))]"
+      class="max-w-2xl mx-auto h-full overflow-y-auto px-6 pb-16"
       :class="{ 'content-fade-bottom': !(selectedRepo && fileBrowserRef?.renderedFile) && !fileBrowserRef?.editingPath }"
     >
       <Transition
