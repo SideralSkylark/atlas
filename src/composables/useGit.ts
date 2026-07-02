@@ -66,7 +66,10 @@ export function useGit() {
   async function loadHistory(repoId: string, limit: number = 50) {
     loading.value = true;
     try {
-      history.value = await invoke<CommitInfo[]>("get_commit_history", { repoId, limit });
+      history.value = await invoke<CommitInfo[]>("get_commit_history", {
+        repoId,
+        limit,
+      });
     } catch (e) {
       error.value = String(e);
     } finally {
@@ -103,10 +106,20 @@ export function useGit() {
     }
   }
 
-  async function commitChanges(repoId: string, message: string, authorName: string, authorEmail: string) {
+  async function commitChanges(
+    repoId: string,
+    message: string,
+    authorName: string,
+    authorEmail: string,
+  ) {
     loading.value = true;
     try {
-      await invoke("commit_changes", { repoId, message, authorName, authorEmail });
+      await invoke("commit_changes", {
+        repoId,
+        message,
+        authorName,
+        authorEmail,
+      });
       await loadStatus(repoId);
       await loadHistory(repoId);
     } catch (e) {
@@ -116,15 +129,27 @@ export function useGit() {
     }
   }
 
-  async function loadDiff(repoId: string, filepath?: string, staged: boolean = false) {
+  async function loadDiff(
+    repoId: string,
+    filepath?: string,
+    staged: boolean = false,
+  ) {
     try {
-      diff.value = await invoke<string>("get_diff", { repoId, filepath, staged });
+      diff.value = await invoke<string>("get_diff", {
+        repoId,
+        filepath,
+        staged,
+      });
     } catch (e) {
       error.value = String(e);
     }
   }
 
-  async function deleteBranch(repoId: string, branchName: string, isRemote: boolean) {
+  async function deleteBranch(
+    repoId: string,
+    branchName: string,
+    isRemote: boolean,
+  ) {
     loading.value = true;
     try {
       await invoke("delete_branch", { repoId, branchName, isRemote });
@@ -138,11 +163,17 @@ export function useGit() {
     }
   }
 
-  async function mergeBranch(repoId: string, branchName: string, authorName: string, authorEmail: string): Promise<MergeResult | null> {
+  async function mergeBranch(
+    repoId: string,
+    branchName: string,
+  ): Promise<MergeResult | null> {
     loading.value = true;
     error.value = null;
     try {
-      const res = await invoke<MergeResult>("merge_branch", { repoId, branchName, authorName, authorEmail });
+      const res = await invoke<MergeResult>("merge_branch", {
+        repoId,
+        branchName,
+      });
       await loadBranches(repoId);
       return res;
     } catch (e) {
@@ -162,7 +193,11 @@ export function useGit() {
     }
   }
 
-  async function resolveConflict(repoId: string, filepath: string, choice: string): Promise<boolean> {
+  async function resolveConflict(
+    repoId: string,
+    filepath: string,
+    choice: string,
+  ): Promise<boolean> {
     loading.value = true;
     error.value = null;
     try {

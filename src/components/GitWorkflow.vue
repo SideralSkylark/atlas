@@ -118,7 +118,7 @@ async function checkConflicts() {
 }
 
 async function onMergeBranch(branchName: string) {
-  const res = await mergeBranch(props.repo.id, branchName, authorName.value, authorEmail.value);
+  const res = await mergeBranch(props.repo.id, branchName);
   branchToMerge.value = null;
   
   if (res) {

@@ -1,11 +1,11 @@
-use git2::{Repository, PushOptions};
+use git2::{PushOptions, Repository};
 use serde::{Deserialize, Serialize};
-use tauri::{command, AppHandle, Runtime};
 use std::fs;
 use std::path::Path;
+use tauri::{command, AppHandle, Runtime};
 
-use crate::repos;
 use crate::git::auth;
+use crate::repos;
 
 #[derive(Serialize, Deserialize)]
 pub struct BranchInfo {
@@ -159,7 +159,6 @@ pub async fn delete_branch<R: Runtime>(
 #[derive(Serialize, Deserialize)]
 pub struct MergeResult {
     pub success: bool,
-    pub conflicts: Vec<String>,
     pub message: String,
 }
 
@@ -168,26 +167,28 @@ pub async fn merge_branch<R: Runtime>(
     app: AppHandle<R>,
     repo_id: String,
     branch_name: String,
-    author_name: String,
-    author_email: String,
 ) -> Result<MergeResult, String> {
     let path = repos::repo_path(&app, &repo_id);
     let repo = Repository::open(&path).map_err(|e| e.to_string())?;
 
     // Find the target branch reference
-    let ref_obj = repo.find_branch(&branch_name, git2::BranchType::Local)
+    let ref_obj = repo
+        .find_branch(&branch_name, git2::BranchType::Local)
         .or_else(|_| repo.find_branch(&branch_name, git2::BranchType::Remote))
         .map_err(|e| e.to_string())?;
-    
-    let reference = ref_obj.get();
-    let annotated = repo.reference_to_annotated_commit(reference).map_err(|e| e.to_string())?;
 
-    let (analysis, _) = repo.merge_analysis(&[&annotated]).map_err(|e| e.to_string())?;
+    let reference = ref_obj.get();
+    let annotated = repo
+        .reference_to_annotated_commit(reference)
+        .map_err(|e| e.to_string())?;
+
+    let (analysis, _) = repo
+        .merge_analysis(&[&annotated])
+        .map_err(|e| e.to_string())?;
 
     if analysis.is_up_to_date() {
         return Ok(MergeResult {
             success: true,
-            conflicts: Vec::new(),
             message: "Already up to date".to_string(),
         });
     }
@@ -195,80 +196,30 @@ pub async fn merge_branch<R: Runtime>(
     if analysis.is_fast_forward() {
         // Fast-forward merge
         let mut head_ref = repo.head().map_err(|e| e.to_string())?;
-        let target_commit = repo.find_commit(annotated.id()).map_err(|e| e.to_string())?;
-        
+        let target_commit = repo
+            .find_commit(annotated.id())
+            .map_err(|e| e.to_string())?;
+
         repo.checkout_tree(
             target_commit.as_object(),
             Some(git2::build::CheckoutBuilder::default().force()),
         )
         .map_err(|e| e.to_string())?;
-        
-        head_ref.set_target(annotated.id(), &format!("Fast-forward merge: {}", branch_name))
+
+        head_ref
+            .set_target(
+                annotated.id(),
+                &format!("Fast-forward merge: {}", branch_name),
+            )
             .map_err(|e| e.to_string())?;
-            
-        repo.set_head(head_ref.name().unwrap()).map_err(|e| e.to_string())?;
+
+        repo.set_head(head_ref.name().unwrap())
+            .map_err(|e| e.to_string())?;
 
         return Ok(MergeResult {
             success: true,
-            conflicts: Vec::new(),
             message: "Merge successful (Fast-forward)".to_string(),
         });
-    }
-
-    if analysis.is_normal() {
-        // Normal merge
-        repo.merge(&[&annotated], None, None).map_err(|e| e.to_string())?;
-        let mut index = repo.index().map_err(|e| e.to_string())?;
-
-        if index.has_conflicts() {
-            // Get conflicts list
-            let mut conflicted_files = Vec::new();
-            let conflicts = index.conflicts().map_err(|e| e.to_string())?;
-            for conflict_res in conflicts {
-                let conflict = conflict_res.map_err(|e| e.to_string())?;
-                let match_path = conflict.our.as_ref().map(|o| &o.path)
-                    .or_else(|| conflict.their.as_ref().map(|t| &t.path))
-                    .or_else(|| conflict.ancestor.as_ref().map(|a| &a.path));
-                if let Some(p) = match_path {
-                    conflicted_files.push(String::from_utf8_lossy(p).to_string());
-                }
-            }
-            conflicted_files.sort();
-            conflicted_files.dedup();
-
-            return Ok(MergeResult {
-                success: false,
-                conflicts: conflicted_files,
-                message: "Conflicts occurred during merge".to_string(),
-            });
-        } else {
-            // Create merge commit
-            let tree_id = index.write_tree().map_err(|e| e.to_string())?;
-            let tree = repo.find_tree(tree_id).map_err(|e| e.to_string())?;
-            
-            let head_commit = repo.head().map_err(|e| e.to_string())?.peel_to_commit().map_err(|e| e.to_string())?;
-            let merge_commit = repo.find_commit(annotated.id()).map_err(|e| e.to_string())?;
-            
-            let signature = git2::Signature::now(&author_name, &author_email).map_err(|e| e.to_string())?;
-            
-            repo.commit(
-                Some("HEAD"),
-                &signature,
-                &signature,
-                &format!("Merge branch '{}'", branch_name),
-                &tree,
-                &[&head_commit, &merge_commit],
-            )
-            .map_err(|e| e.to_string())?;
-            
-            repo.cleanup_state().map_err(|e| e.to_string())?;
-
-            return Ok(MergeResult {
-                success: true,
-                conflicts: Vec::new(),
-                message: "Merge successful".to_string(),
-            });
-        }
     }
 
     Err("Unsupported merge type".to_string())
@@ -288,7 +239,10 @@ pub fn get_conflicts<R: Runtime>(
         let conflicts = index.conflicts().map_err(|e| e.to_string())?;
         for conflict_res in conflicts {
             let conflict = conflict_res.map_err(|e| e.to_string())?;
-            let match_path = conflict.our.as_ref().map(|o| &o.path)
+            let match_path = conflict
+                .our
+                .as_ref()
+                .map(|o| &o.path)
                 .or_else(|| conflict.their.as_ref().map(|t| &t.path))
                 .or_else(|| conflict.ancestor.as_ref().map(|a| &a.path));
             if let Some(p) = match_path {
@@ -322,7 +276,10 @@ pub fn resolve_conflict<R: Runtime>(
         for conflict_res in conflicts {
             let conflict = conflict_res.map_err(|e| e.to_string())?;
 
-            let match_path = conflict.our.as_ref().map(|o| &o.path)
+            let match_path = conflict
+                .our
+                .as_ref()
+                .map(|o| &o.path)
                 .or_else(|| conflict.their.as_ref().map(|t| &t.path))
                 .or_else(|| conflict.ancestor.as_ref().map(|a| &a.path));
 
@@ -355,7 +312,9 @@ pub fn resolve_conflict<R: Runtime>(
     }
 
     // Phase 3: stage the file to resolve the conflict in the index.
-    index.add_path(Path::new(&filepath)).map_err(|e| e.to_string())?;
+    index
+        .add_path(Path::new(&filepath))
+        .map_err(|e| e.to_string())?;
     index.write().map_err(|e| e.to_string())?;
     Ok(())
 }
