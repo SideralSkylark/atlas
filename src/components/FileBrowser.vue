@@ -545,14 +545,14 @@ async function handleDelete() {
     </div>
 
     <!-- Git View -->
-    <div v-if="view === 'git'" class="flex-1 overflow-y-auto px-6 -mx-6">
+    <div v-if="view === 'git'" class="flex-1 overflow-y-auto px-6 -mx-6 pt-2">
       <GitWorkflow ref="gitWorkflowRef" :repo="repo" @reload-files="loadFiles(repo.id)" @edit-file="(path) => { editingPath = path }" />
     </div>
 
     <!-- Files View -->
     <div 
       v-else 
-      class="flex-1 overflow-y-auto px-6 -mx-6 transition-transform duration-200"
+      class="flex-1 overflow-y-auto px-6 pt-2 -mx-6 transition-transform duration-200"
       :style="{ transform: `translateX(${Math.min(swipeDelta / 2, 80)}px)` }"
     >
       <!-- Search Bar -->
