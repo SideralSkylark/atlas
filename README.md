@@ -16,7 +16,7 @@ devices in your workflow don't need Atlas. They just need Git.
 ## Tech Stack
 
 | Layer               | Technology                      |
-| ------------------- | ------------------------------- |
+| ------------------- | -------------------------------- |
 | Frontend            | Vue 3 + TypeScript (Vite)       |
 | Backend             | Rust                            |
 | Framework           | Tauri 2                         |
@@ -27,71 +27,22 @@ devices in your workflow don't need Atlas. They just need Git.
 
 ---
 
-## Milestones
+## Status
 
-### Phase 0 — Build Environment
+- **Git core (HTTPS):** clone, pull, push, branch, PAT auth — done
+- **File rendering:** HTML/Markdown preview, syntax-highlighted code viewer, filename search — done
+- **Security:** Android Keystore-backed PAT storage — done
+- **Git workflow:** branches, commit history, staging, diffs, fast-forward merge — done
+- **Editor:** create/edit/delete files, commit and push from editor — done
+- **Theme:** 4 default themes with light and dark mode support — done
 
-* [x] Tauri 2 + Vue 3 scaffolded
-* [x] App builds and runs on Android device
-* [x] USB and wireless ADB working
+**Remaining for v1:**
+- [ ] Fix duplicate safe-area bottom offset
+- [ ] Mobile UI polish pass (touch targets, gestures)
+- [ ] Performance pass on large repos / diffs
+- [ ] F-Droid metadata and build recipe
 
-### Phase 1 — Git Core (HTTPS)
-
-* [x] Clone over HTTPS
-* [x] List repos
-* [x] Browse file tree
-* [x] Pull (fetch + merge)
-* [x] Push over HTTPS
-* [x] PAT credential management
-
-### Phase 2 — File Rendering
-
-* [x] Render HTML files in WebView
-* [x] Render Markdown
-* [x] Syntax-highlighted code viewer (syntect)
-* [x] Search across filenames
-
-### Phase 3 — Security
-
-* [x] Android Keystore integration
-* [x] Secure PAT storage
-
-### Phase 4 — Git Workflow
-
-* [x] Branch list
-* [x] Create branch
-* [x] Switch branch
-* [x] Commit history viewer
-* [x] Staging area
-* [x] Commit changes
-* [x] Diff viewer
-
-### Phase 5 — Editor
-
-* [x] add and delete files
-* [x] delete branches
-* [x] In-app text editor
-* [x] Save file changes
-* [x] Commit from editor
-* [x] Push after commit
-
-### Phase 6 — SSH Support
-
-* [ ] SSH key generation
-* [ ] SSH key import
-* [ ] SSH clone
-* [ ] SSH pull
-* [ ] SSH push
-* [ ] Host key verification
-* [ ] Known hosts management
-
-### Phase 7 — Polish & Release
-
-* [x] Everforest Hard Dark theme
-* [ ] Proper mobile UI (touch targets, gestures)
-* [ ] Performance pass
-* [ ] F-Droid metadata and build recipe
-* [ ] README and documentation
+**Merge policy (v1):** fast-forward only. Non-fast-forward merges show an error directing the user to resolve on desktop. No in-app conflict resolution.
 
 ---
 
@@ -139,34 +90,20 @@ no risk of other apps modifying repo state.
 * **One learning track**: Rust is the focus. Vue is already known. No new JS frameworks.
 * **Open source**: MIT or Apache 2.0 license. F-Droid compatible.
 
---- 
+---
 
-## Todo
+## Future Work
 
-### High Priority
-- [ ] **UI**: remove the duplicate safe-area bottom offset
-- [ ] **Conflict Resolution UI**: A dedicated view to handle merge conflicts within the app.
-- [ ] **SSH Support**: Implementation of Phase 6 (Key generation, import, and SSH-based remotes).
-- [x] **File Management**: Create, delete, and rename files/directories from the file browser.
-- [ ] **Branch Management**: Delete branches (local and remote) and merge support.
+Not planned for v1. 
 
-### Git Enhancements
-- [ ] **Commit Amending**: Support for `git commit --amend`.
-- [ ] **Visual History Graph**: A canvas or SVG-based graph to visualize branch merges and history.
-- [ ] **Blame View**: Show who last modified each line in the file viewer.
-
-### Editor & Viewer
-- [ ] **Search in Files**: Global "grep" functionality to find text across the entire repository.
-- [ ] **Image & PDF Support**: View non-text assets directly in the file viewer.
-
-### UI/UX & Polish
-- [ ] **Custom Themes**: Support for different color schemes beyond Everforest.
-- [ ] **App Shortcuts**: Long-press app icon shortcuts to jump to recent repositories.
-- [ ] **Refined Gestures**: Enhanced swipe-to-action patterns for common git tasks.
-- [ ] **Activity View**: Populate the dedicated Activity tab with a global feed of recent git events across all repos.
-
-### Reliability
-- [ ] **Automated Testing**: Unit tests for Rust git logic and E2E tests for the Vue frontend.
-- [ ] **Error Boundaries**: Improved global error handling and user-friendly recovery paths.
-- [ ] **Performance Pass**: Optimize large repository loading and diff rendering.
-
+* SSH support (key generation/import, SSH clone/pull/push, host key verification, known_hosts management)
+* Image & PDF viewer support
+* Conflict resolution UI
+* Visual history graph
+* Blame view
+* Global search across files (grep)
+* Custom themes by the user
+* App shortcuts (long-press to recent repos)
+* Activity tab / global event feed
+* Automated testing (Rust unit tests, Vue E2E)
+* Commit amending
