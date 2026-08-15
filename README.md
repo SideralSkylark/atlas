@@ -54,17 +54,6 @@ directing the user to resolve on desktop. No in-app conflict resolution.
 
 ---
 
-## Known Bugs (found in manual testing)
-
-- [x] **Stale credential state after adding a PAT.** Adding a token and immediately
-      pulling a private repo fails; only works after a full app restart. Root cause:
-      Android Keystore writes were using `SharedPreferences.apply()`, which returns
-      before the value is durably written, so the next git operation could read the
-      stale credential state. The fix ensures each credential save/delete is a
-      synchronous `commit()` and fails fast if the write cannot complete.
-
----
-
 ## Remaining for v1
 - [x] Fix stale-credential bug above
 - [x] Fix duplicate safe-area bottom offset
