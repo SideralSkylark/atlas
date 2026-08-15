@@ -68,11 +68,11 @@ directing the user to resolve on desktop. No in-app conflict resolution.
 ## Remaining for v1
 - [x] Fix stale-credential bug above
 - [ ] Fix duplicate safe-area bottom offset
-- [ ] Add inline "push branch" affordance right after branch creation, instead of
+- [x] Add inline "push branch" affordance right after branch creation, instead of
       requiring navigation to a separate page (workflow itself — create local,
       push separately — stays as-is; this is about surfacing the action, not
       changing the model)
-- [ ] Add "Commit & Push" as an option alongside "Commit" in the commit window
+- [x] Add "Commit & Push" as an option alongside "Commit" in the commit window
 - [ ] Mobile UI polish pass (touch targets, gestures)
 - [ ] Performance pass on large repos / diffs
 - [ ] F-Droid metadata and build recipe

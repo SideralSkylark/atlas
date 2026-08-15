@@ -17,6 +17,7 @@ import {
 } from "@lucide/vue";
 import { invoke } from "@tauri-apps/api/core";
 import { useGit } from "../composables/useGit";
+import { useRepos } from "../composables/useRepos";
 import type { RepoInfo } from "../composables/useRepos";
 import DiffView from "./DiffView.vue";
 
@@ -50,6 +51,7 @@ const {
   commitChanges,
   loadDiff,
 } = useGit();
+const { pushRepo } = useRepos();
 
 const activeTab = ref<"branches" | "history" | "changes">("branches");
 const newBranchName = ref("");
@@ -60,6 +62,7 @@ const showAuthor = ref(false);
 
 const revertingFile = ref<string | null>(null);
 const confirmRevert = ref<string | null>(null);
+const pushingBranch = ref<string | null>(null);
 
 function triggerRevert(path: string) {
   confirmRevert.value = path;
@@ -98,6 +101,23 @@ async function onCreateBranch() {
 
 async function onSwitchBranch(name: string) {
   await switchBranch(props.repo.id, name);
+  await reloadAll();
+}
+
+async function onPushBranch() {
+  const currentBranch = branches.value.find((branch) => branch.is_current);
+  if (!currentBranch) return;
+
+  pushingBranch.value = currentBranch.name;
+  const res = await pushRepo(props.repo.id);
+  pushingBranch.value = null;
+
+  if (res.success) {
+    error.value = null;
+  } else {
+    error.value = res.message;
+  }
+
   await reloadAll();
 }
 
@@ -228,6 +248,24 @@ async function onCommit() {
 
   await commitChanges(props.repo.id, commitMessage.value, authorName.value, authorEmail.value);
   commitMessage.value = "";
+  if ('vibrate' in navigator) navigator.vibrate(20);
+  await reloadAll();
+}
+
+async function onCommitAndPush() {
+  if (!commitMessage.value) return;
+
+  localStorage.setItem("atlas_author_name", authorName.value);
+  localStorage.setItem("atlas_author_email", authorEmail.value);
+
+  await commitChanges(props.repo.id, commitMessage.value, authorName.value, authorEmail.value);
+  commitMessage.value = "";
+
+  const pushResult = await pushRepo(props.repo.id);
+  if (!pushResult.success) {
+    error.value = pushResult.message;
+  }
+
   if ('vibrate' in navigator) navigator.vibrate(20);
   await reloadAll();
 }
@@ -375,7 +413,18 @@ onMounted(() => {
                 <Trash2 :size="16" />
               </button>
             </div>
-            <Check v-else :size="16" class="text-yellow shrink-0" />
+            <div v-else class="flex items-center gap-1 shrink-0">
+              <button
+                @click="onPushBranch"
+                :disabled="pushingBranch !== null"
+                class="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-dim hover:text-green active:scale-95 duration-100 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+                title="Push current branch"
+              >
+                <Loader2 v-if="pushingBranch === branch.name" :size="16" class="animate-spin" />
+                <RotateCcw v-else :size="16" />
+              </button>
+              <Check :size="16" class="text-yellow shrink-0" />
+            </div>
           </template>
         </div>
       </div>
@@ -511,6 +560,13 @@ onMounted(() => {
             class="flex-1 py-2.5 bg-green text-bg0 rounded-lg text-sm font-bold active:scale-95 duration-100 transition-all disabled:opacity-30 disabled:scale-100 cursor-pointer shadow-md font-sans"
           >
             Commit ({{ status.filter(s => s.staged).length }})
+          </button>
+          <button
+            @click="onCommitAndPush"
+            :disabled="!commitMessage || status.filter(s => s.staged).length === 0 || conflictedFiles.length > 0"
+            class="flex-1 py-2.5 bg-yellow text-bg0 rounded-lg text-sm font-bold active:scale-95 duration-100 transition-all disabled:opacity-30 disabled:scale-100 cursor-pointer shadow-md font-sans"
+          >
+            Commit & Push
           </button>
         </div>
         <p v-if="conflictedFiles.length > 0" class="text-[10px] text-red font-bold font-sans text-center mt-2 animate-fade">
