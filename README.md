@@ -56,19 +56,17 @@ directing the user to resolve on desktop. No in-app conflict resolution.
 
 ## Known Bugs (found in manual testing)
 
-- [ ] **Stale credential state after adding a PAT.** Adding a token and immediately
-      pulling a private repo fails; only works after a full app restart. Likely cause:
-      the PAT is cached in memory (app state / `OnceCell`) at startup or at first read,
-      and the save-token command doesn't refresh that in-memory copy — the `git2`
-      credential callback keeps using the stale value. Fix: read the token from
-      Keystore at the moment of each git operation rather than from a cached copy;
-      confirm the Keystore write completes before the operation proceeds. **Blocker for v1** —
-      auth working only after restart is not shippable.
+- [x] **Stale credential state after adding a PAT.** Adding a token and immediately
+      pulling a private repo fails; only works after a full app restart. Root cause:
+      Android Keystore writes were using `SharedPreferences.apply()`, which returns
+      before the value is durably written, so the next git operation could read the
+      stale credential state. The fix ensures each credential save/delete is a
+      synchronous `commit()` and fails fast if the write cannot complete.
 
 ---
 
 ## Remaining for v1
-- [ ] Fix stale-credential bug above
+- [x] Fix stale-credential bug above
 - [ ] Fix duplicate safe-area bottom offset
 - [ ] Add inline "push branch" affordance right after branch creation, instead of
       requiring navigation to a separate page (workflow itself — create local,

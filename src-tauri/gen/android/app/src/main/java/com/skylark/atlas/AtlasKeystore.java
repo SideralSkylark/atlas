@@ -93,7 +93,11 @@ public class AtlasKeystore extends Plugin {
       String encoded = Base64.encodeToString(combined, Base64.NO_WRAP);
 
       SharedPreferences prefs = activity.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-      prefs.edit().putString(args.alias, encoded).apply();
+      boolean saved = prefs.edit().putString(args.alias, encoded).commit();
+      if (!saved) {
+        invoke.reject("Failed to persist secret for alias: " + args.alias);
+        return;
+      }
 
       invoke.resolve();
     } catch (Exception e) {
@@ -149,7 +153,11 @@ public class AtlasKeystore extends Plugin {
 
     SharedPreferences prefs = activity.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     if (prefs.contains(args.alias)) {
-      prefs.edit().remove(args.alias).apply();
+      boolean removed = prefs.edit().remove(args.alias).commit();
+      if (!removed) {
+        invoke.reject("Failed to remove secret for alias: " + args.alias);
+        return;
+      }
       invoke.resolve();
     } else {
       invoke.reject("Secret not found");
