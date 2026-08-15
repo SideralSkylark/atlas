@@ -3,7 +3,6 @@ import { ref, computed, watch, onUnmounted, onMounted } from "vue";
 import { 
   Clipboard, 
   ClipboardCheck, 
-  Edit2, 
   Loader2, 
   Maximize2, 
   Minimize2 
@@ -14,10 +13,6 @@ import type { RenderedFile } from "../composables/useFileSystem";
 const props = defineProps<{
   file: RenderedFile;
   filename?: string;
-}>();
-
-const emit = defineEmits<{
-  (e: "edit"): void;
 }>();
 
 const copied = ref(false);

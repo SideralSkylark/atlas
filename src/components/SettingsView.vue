@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Moon, Sun, Palette } from "@lucide/vue";
 import CredentialsManager from "./CredentialsManager.vue";
+import SettingsCard from "./ui/SettingsCard.vue";
 import { useTheme } from "../composables/useTheme";
 
 const { theme, appearance, setTheme, toggleAppearance } = useTheme();
@@ -14,17 +15,14 @@ const { theme, appearance, setTheme, toggleAppearance } = useTheme();
         Manage credentials and preferences
       </p>
     </div>
-    
-    <!-- Appearance Section -->
-    <div class="space-y-4">
-      <div class="flex items-center gap-2">
+
+    <SettingsCard title="Appearance" description="Theme and visual mode">
+      <template #icon>
         <Palette :size="16" class="text-yellow" />
-        <h3 class="text-xs font-bold uppercase tracking-widest text-fg-dim">Appearance</h3>
-      </div>
-      
+      </template>
+
       <div class="grid grid-cols-1 gap-3">
-        <!-- Mode Toggle -->
-        <button 
+        <button
           @click="toggleAppearance"
           class="flex items-center justify-between p-4 bg-bg1 border border-border rounded-xl hover:border-yellow transition-all active:scale-[0.98] shadow-sm"
           style="box-shadow: var(--shadow-sm), var(--shadow-inset)"
@@ -40,18 +38,17 @@ const { theme, appearance, setTheme, toggleAppearance } = useTheme();
             </div>
           </div>
           <div class="w-12 h-6 bg-bg2 rounded-full relative transition-colors" :class="{ 'bg-yellow/20': true }">
-            <div 
+            <div
               class="absolute top-1 w-4 h-4 rounded-full transition-all duration-200"
               :class="appearance === 'dark' ? 'right-1 bg-yellow' : 'right-7 bg-fg-dim'"
             ></div>
           </div>
         </button>
 
-        <!-- Theme Selection -->
         <div class="p-4 bg-bg1 border border-border rounded-xl space-y-3 shadow-sm" style="box-shadow: var(--shadow-sm), var(--shadow-inset)">
           <p class="text-[10px] font-bold uppercase tracking-widest text-fg-dim ml-1">Color Scheme</p>
           <div class="grid grid-cols-2 gap-2">
-            <button 
+            <button
               @click="setTheme('everforest')"
               class="flex flex-col gap-2 p-3 rounded-lg border-2 transition-all text-left"
               :class="theme === 'everforest' ? 'border-yellow bg-bg2' : 'border-transparent bg-bg0 hover:border-border'"
@@ -63,7 +60,7 @@ const { theme, appearance, setTheme, toggleAppearance } = useTheme();
               </div>
               <span class="text-xs font-bold">Everforest</span>
             </button>
-            <button 
+            <button
               @click="setTheme('gruvbox')"
               class="flex flex-col gap-2 p-3 rounded-lg border-2 transition-all text-left"
               :class="theme === 'gruvbox' ? 'border-yellow bg-bg2' : 'border-transparent bg-bg0 hover:border-border'"
@@ -75,7 +72,7 @@ const { theme, appearance, setTheme, toggleAppearance } = useTheme();
               </div>
               <span class="text-xs font-bold">Gruvbox</span>
             </button>
-            <button 
+            <button
               @click="setTheme('rosepine')"
               class="flex flex-col gap-2 p-3 rounded-lg border-2 transition-all text-left"
               :class="theme === 'rosepine' ? 'border-yellow bg-bg2' : 'border-transparent bg-bg0 hover:border-border'"
@@ -87,7 +84,7 @@ const { theme, appearance, setTheme, toggleAppearance } = useTheme();
               </div>
               <span class="text-xs font-bold">Rose Pine</span>
             </button>
-            <button 
+            <button
               @click="setTheme('kanagawa')"
               class="flex flex-col gap-2 p-3 rounded-lg border-2 transition-all text-left"
               :class="theme === 'kanagawa' ? 'border-yellow bg-bg2' : 'border-transparent bg-bg0 hover:border-border'"
@@ -102,10 +99,8 @@ const { theme, appearance, setTheme, toggleAppearance } = useTheme();
           </div>
         </div>
       </div>
-    </div>
-    
-    <div class="space-y-6">
-      <CredentialsManager />
-    </div>
+    </SettingsCard>
+
+    <CredentialsManager />
   </div>
 </template>

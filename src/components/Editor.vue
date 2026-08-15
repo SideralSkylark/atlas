@@ -7,11 +7,8 @@ import {
   X, 
   Check, 
   GitCommit, 
-  Upload, 
   Loader2,
-  AlertCircle,
-  ChevronRight,
-  ChevronDown
+  AlertCircle
 } from "@lucide/vue";
 import { useFileSystem } from "../composables/useFileSystem";
 import { useGit } from "../composables/useGit";
@@ -39,7 +36,6 @@ const originalContent = ref("");
 const commitMessage = ref("");
 const showCommitDialog = ref(false);
 const shouldPushAfterCommit = ref(false);
-const error = ref<string | null>(null);
 
 const isDirty = computed(() => content.value !== originalContent.value);
 const showUnsavedDialog = ref(false);
@@ -72,7 +68,6 @@ async function onSave() {
     emit("notify", { type: "success", text: "File saved." });
     
     if (pendingAction.value === 'commit') {
-      const action = pendingAction.value;
       pendingAction.value = null;
       openCommitDialog();
     }

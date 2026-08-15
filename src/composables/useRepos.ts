@@ -11,41 +11,14 @@ export interface RepoInfo {
 export function useRepos() {
   const repos = ref<RepoInfo[]>([]);
   const cloning = ref(false);
-  const syncing = ref<string | null>(null); // repoId being synced
+  const syncing = ref<string | null>(null);
   const deletingRepo = ref<string | null>(null);
   const error = ref<string | null>(null);
   const successMessage = ref<string | null>(null);
-  const pats = ref<Record<string, string>>({});
 
   async function loadRepos() {
     try {
       repos.value = await invoke<RepoInfo[]>("list_repos");
-    } catch (e) {
-      error.value = String(e);
-    }
-  }
-
-  async function loadPats() {
-    try {
-      pats.value = await invoke<Record<string, string>>("get_pats");
-    } catch (e) {
-      error.value = String(e);
-    }
-  }
-
-  async function savePat(domain: string, token: string) {
-    try {
-      await invoke("save_pat", { domain, token });
-      await loadPats();
-    } catch (e) {
-      error.value = String(e);
-    }
-  }
-
-  async function deletePat(domain: string) {
-    try {
-      await invoke("delete_pat", { domain });
-      await loadPats();
     } catch (e) {
       error.value = String(e);
     }
@@ -166,11 +139,7 @@ export function useRepos() {
     deletingRepo,
     error,
     successMessage,
-    pats,
     loadRepos,
-    loadPats,
-    savePat,
-    deletePat,
     cloneRepo,
     pullRepo,
     pushRepo,
