@@ -12,8 +12,6 @@ pub struct RepoInfo {
     pub last_modified: Option<u64>,
 }
 
-// this is badly written code this should be named something else
-// cause its confusing
 #[derive(Serialize, Deserialize)]
 pub struct CloneResult {
     pub success: bool,
@@ -39,7 +37,7 @@ pub fn list_repos<R: Runtime>(app: AppHandle<R>) -> Vec<RepoInfo> {
                         .ok()
                         .and_then(|h| h.shorthand().map(|s| s.to_string()))
                         .unwrap_or_else(|| "detached".to_string());
-                    
+
                     let last_modified = fs::metadata(&path)
                         .ok()
                         .and_then(|m| m.modified().ok())

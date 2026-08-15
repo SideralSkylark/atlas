@@ -4,6 +4,7 @@ use tauri::Manager;
 
 pub mod atlas_keystore;
 pub mod credentials;
+pub mod error;
 pub mod files;
 pub mod git;
 pub mod repos;
@@ -13,15 +14,21 @@ pub mod state;
 use credentials::{delete_pat, get_pats, save_pat};
 
 // Files
-use files::{list_files, read_raw_file, render_file, search_files, write_file, create_file, create_directory, delete_item};
+use files::{
+    create_directory, create_file, delete_item, list_files, read_raw_file, render_file,
+    search_files, write_file,
+};
 
 // Git
 use git::{
-    branch::{create_branch, list_branches, switch_branch, delete_branch, merge_branch, get_conflicts, resolve_conflict},
+    branch::{
+        create_branch, delete_branch, get_conflicts, list_branches, merge_branch, resolve_conflict,
+        switch_branch,
+    },
     clone::clone_repo,
     commit::{commit_changes, get_commit_history},
     remote::{git_pull, git_push},
-    status::{get_diff, get_status, stage_file, unstage_file, revert_file},
+    status::{get_diff, get_status, revert_file, stage_file, unstage_file},
 };
 
 // Repositories
