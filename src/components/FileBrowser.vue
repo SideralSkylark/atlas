@@ -223,6 +223,22 @@ async function handleSearchEntry(entry: { relative_path: string; is_dir: boolean
 // Gesture Handlers
 let startedAtTop = false;
 
+function getScrollableParent(): HTMLElement | null {
+  if (!containerRef.value) return null;
+
+  let el: HTMLElement | null = containerRef.value.parentElement;
+  while (el) {
+    const style = window.getComputedStyle(el);
+    const canScroll = /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight;
+    if (canScroll) {
+      return el;
+    }
+    el = el.parentElement;
+  }
+
+  return containerRef.value;
+}
+
 function onTouchStart(e: TouchEvent) {
   touchStartX.value = e.touches[0].clientX;
   touchStartY.value = e.touches[0].clientY;
@@ -232,7 +248,9 @@ function onTouchStart(e: TouchEvent) {
   isPulling.value = false;
   swipeDelta.value = 0;
   pullDelta.value = 0;
-  startedAtTop = containerRef.value ? containerRef.value.scrollTop === 0 : false;
+
+  const scrollHost = getScrollableParent();
+  startedAtTop = scrollHost ? scrollHost.scrollTop <= 8 : false;
 }
 
 function onTouchMove(e: TouchEvent) {
@@ -241,9 +259,11 @@ function onTouchMove(e: TouchEvent) {
   
   const deltaX = touchCurrentX.value - touchStartX.value;
   const deltaY = touchCurrentY.value - touchStartY.value;
+  const scrollHost = getScrollableParent();
+  const listAtTop = scrollHost ? scrollHost.scrollTop <= 8 : false;
 
   // Swipe back detection (must be mostly horizontal and exceed threshold)
-  if (!isSwiping.value && deltaX > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 2 && view.value === 'files' && !showSearch.value) {
+  if (!isSwiping.value && deltaX > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5 && view.value === 'files' && !showSearch.value) {
     isSwiping.value = true;
   }
 
@@ -251,24 +271,24 @@ function onTouchMove(e: TouchEvent) {
     swipeDelta.value = deltaX;
   }
 
-  // Pull to refresh detection (must start at top, exceed vertical drag of 50px, and be mostly vertical)
-  const canPull = startedAtTop && !renderedFile.value && !showSearch.value;
-  if (!isPulling.value && deltaY > 50 && Math.abs(deltaY) > Math.abs(deltaX) * 2.5 && canPull) {
+  // Pull to refresh detection: only from the true top of the scroll area and only while pulling downward.
+  const canPull = startedAtTop && listAtTop && deltaY > 0 && !renderedFile.value && !showSearch.value;
+  if (!isPulling.value && deltaY > 100 && Math.abs(deltaY) > Math.abs(deltaX) * 2.5 && canPull) {
     isPulling.value = true;
   }
 
   if (isPulling.value) {
-    pullDelta.value = deltaY;
+    pullDelta.value = Math.min(deltaY, 140);
     if (e.cancelable) e.preventDefault(); // Prevent native scroll
   }
 }
 
 async function onTouchEnd() {
-  if (isSwiping.value && swipeDelta.value > 120) {
+  if (isSwiping.value && swipeDelta.value > 100) {
     handleBack();
   }
   
-  if (isPulling.value && pullDelta.value > 90 && syncing.value !== props.repo.id) {
+  if (isPulling.value && pullDelta.value > 100 && syncing.value !== props.repo.id) {
     if ('vibrate' in navigator) navigator.vibrate(20);
     await onPull();
     if (view.value === 'git' && gitWorkflowRef.value) {

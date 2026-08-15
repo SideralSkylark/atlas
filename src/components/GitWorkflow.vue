@@ -586,6 +586,7 @@ onMounted(() => {
             v-for="entry in status"
             :key="entry.path"
             class="relative overflow-hidden rounded-xl bg-bg0"
+            style="touch-action: pan-y;"
           >
             <!-- Background Actions (Visible when swiping) -->
             <div 

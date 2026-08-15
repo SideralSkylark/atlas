@@ -57,11 +57,11 @@ onUnmounted(() => cancelPress());
 <template>
   <div
     class="relative group flex items-center px-4 py-4 mb-3 bg-bg1 border border-border rounded-xl transition-all active:scale-[0.98] shadow-sm hover:shadow-md overflow-hidden select-none"
+    style="touch-action: manipulation; box-shadow: var(--shadow-sm), var(--shadow-inset);"
     :class="[
       !deleting ? 'cursor-pointer hover:bg-bg1/80' : 'opacity-50',
       showDeleteConfirm ? 'border-l-4 border-l-red' : ''
     ]"
-    style="box-shadow: var(--shadow-sm), var(--shadow-inset)"
     @mousedown="startPress"
     @mouseup="cancelPress"
     @mouseleave="cancelPress"
@@ -94,7 +94,7 @@ onUnmounted(() => cancelPress());
         <button
           @click.stop="$emit('delete', repo)"
           :disabled="deleting"
-          class="flex items-center gap-2 px-4 py-2 bg-red/10 text-red border border-red/20 rounded-lg font-bold text-xs hover:bg-red/20 transition-all"
+          class="min-h-[44px] min-w-[44px] flex items-center justify-center gap-2 px-4 py-2 bg-red/10 text-red border border-red/20 rounded-lg font-bold text-xs hover:bg-red/20 transition-all"
         >
           <Loader2 v-if="deleting" :size="14" class="animate-spin" />
           <Trash2 v-else :size="14" />

@@ -15,7 +15,7 @@ defineEmits<{
     <div class="flex max-w-2xl mx-auto">
       <button
         @click="$emit('update:currentView', 'repos')"
-        class="flex-1 flex flex-col items-center justify-center py-3 gap-1 text-[9px] uppercase tracking-widest font-bold transition-colors relative"
+        class="flex-1 min-h-[56px] flex flex-col items-center justify-center py-2 gap-1 text-[9px] uppercase tracking-widest font-bold transition-colors relative touch-manipulation"
         :class="currentView === 'repos' ? 'text-yellow' : 'text-fg-dim hover:text-fg'"
       >
         <div v-if="currentView === 'repos'" class="w-4 h-0.5 bg-yellow rounded-full absolute top-1"></div>
@@ -25,7 +25,7 @@ defineEmits<{
 
       <button
         @click="$emit('update:currentView', 'activity')"
-        class="flex-1 flex flex-col items-center justify-center py-3 gap-1 text-[9px] uppercase tracking-widest font-bold transition-colors relative"
+        class="flex-1 min-h-[56px] flex flex-col items-center justify-center py-2 gap-1 text-[9px] uppercase tracking-widest font-bold transition-colors relative touch-manipulation"
         :class="currentView === 'activity' ? 'text-yellow' : 'text-fg-dim hover:text-fg'"
       >
         <div v-if="currentView === 'activity'" class="w-4 h-0.5 bg-yellow rounded-full absolute top-1"></div>
@@ -35,7 +35,7 @@ defineEmits<{
 
       <button
         @click="$emit('update:currentView', 'settings')"
-        class="flex-1 flex flex-col items-center justify-center py-3 gap-1 text-[9px] uppercase tracking-widest font-bold transition-colors relative"
+        class="flex-1 min-h-[56px] flex flex-col items-center justify-center py-2 gap-1 text-[9px] uppercase tracking-widest font-bold transition-colors relative touch-manipulation"
         :class="currentView === 'settings' ? 'text-yellow' : 'text-fg-dim hover:text-fg'"
       >
         <div v-if="currentView === 'settings'" class="w-4 h-0.5 bg-yellow rounded-full absolute top-1"></div>

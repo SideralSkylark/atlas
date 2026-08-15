@@ -69,9 +69,9 @@ onMounted(async () => {
 <template>
   <div class="h-screen overflow-hidden bg-bg0 text-fg font-sans antialiased tracking-tight
               pt-[calc(1rem+env(safe-area-inset-top))]
-              pb-[env(safe-area-inset-bottom)]
               pl-[env(safe-area-inset-left)]
               pr-[env(safe-area-inset-right)]"
+       style="touch-action: pan-y;"
        @touchstart="handleTouchStart($event, !!selectedRepo)"
        @touchmove="handleTouchMove($event, !!selectedRepo)"
        @touchend="handleTouchEnd(!!selectedRepo)">
